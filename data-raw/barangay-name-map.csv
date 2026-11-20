@@ -1,0 +1,40 @@
+municipality,barangay_population,barangay_case_record,match_type
+Basud,San Felipe,San Felipe,exact
+Basud,Matnog,Matnog,exact
+Basud,Poblacion 1,Poblacion 1,exact
+Basud,Tuaca,Tuaca,exact
+Capalonga,Poblacion,Poblacion,exact
+Capalonga,Calabaca,Calabaca,exact
+Capalonga,Alayao,Alayao,exact
+Daet,Alawihao,Alawihao,exact
+Daet,Camambugan,Camambugan,exact
+Daet,Barangay IV (Pob.),Barangay Iv (Pob.),case-insensitive
+Daet,Gubat,Gubat,exact
+Daet,Lag-On,Lag-On,exact
+Daet,Barangay III (Pob.),Barangay Iii (Pob.),case-insensitive
+Jose Panganiban,Larap,Larap,exact
+Jose Panganiban,Parang,Parang,exact
+Jose Panganiban,Luklukan Sur,Luklukan Sur,exact
+Labo,Dalas,Dalas,exact
+Labo,Tulay Na Lupa,Tulay Na Lupa,exact
+Labo,Masalong,Masalong,exact
+Labo,Talobatib,Talobatib,exact
+Labo,Daguit,Daguit,exact
+Mercedes,San Roque,San Roque,exact
+Mercedes,Manguisoc,Manguisoc,exact
+Mercedes,Barangay II (Pob.),Barangay Ii (Pob.),case-insensitive
+Paracale,Bagumbayan,Bagumbayan,exact
+Paracale,Tugos,Tugos,exact
+Paracale,Batobalani,Batobalani,exact
+San Lorenzo Ruiz,Matacong,Matacong (Pob.),manual
+San Lorenzo Ruiz,Mampurog,Mampurog,exact
+San Vicente,Man-Ogob,Man-Ogob,exact
+San Vicente,San Jose,San Jose (Iraya Norte),manual
+Santa Elena,Santa Elena (Pob.),Santa Elena (Pob.),exact
+Santa Elena,San Lorenzo,San Lorenzo,exact
+Santa Elena,Basiad,Basiad,exact
+Talisay,Gabon,Gabon,exact
+Talisay,Binanuaan,Binanuaan,exact
+Vinzons,Calangcawan Sur,Calangcawan Sur,exact
+Vinzons,Calangcawan Norte,Calangcawan Norte,exact
+Vinzons,Santo Domingo,Santo Domingo,exact
