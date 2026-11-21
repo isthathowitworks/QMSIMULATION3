@@ -84,17 +84,28 @@ QMSIMULATION3/                   <- project root (no extra folder)
     fit-settings.ts              <- (planned, M4) fitting script, uses the same engine
   src/
     engine/                      <- the model: no UI code in here
-      rng.ts                     <- seeded random numbers (next, int, binomial, poisson)
+      rng.ts                     <- seeded random numbers (next, int, binomial by inversion, poisson by PTRS)
       population.ts              <- builds people and households from population.json
       biology.ts                 <- temperature rules: development, incubation, death, egg laying
       breeding.ts                <- rain and breeding sites, larvae crowding
-      mosquitoes.ts              <- (planned) mosquito life stages and daily update
-      policy.ts                  <- (planned) cleaning and fogging
-      infection.ts               <- (planned)
-      movement.ts                <- (planned)
-      run.ts                     <- (planned)
+      mosquitoes.ts              <- mosquito life stages per household (immatures, adults)
+      lifecycle.ts               <- cleaning effect, adult development, adult death, egg laying
+      params.ts                  <- all slider starting positions (DEFAULT_PARAMS) and settings.json overrides
+      schedule.ts                <- staggered cleaning days and who cleans each scheduled day
+      daily.ts                   <- one day of mosquitoes, in three parts (dayStart, dayAdultDeath, dayEggs) so fogging, movement and infection can sit between them
+      spinup.ts                  <- 150-day mosquito-only warm-up before the record starts
+      weather.ts                 <- turns weather.json into temperature, rain and 14-day rain arrays
+      mosquitoRun.ts             <- mosquito-only run: warm-up, then every day of the record
+      policyData.ts              <- turns policy.json into cleaning intervals and fogging triggers
+      fogging.ts                 <- fogging: case trigger, 7-day wait, share of households reached, adults killed
+      infection.ts               <- mosquito side of infection (step 4c)
+      humans.ts                  <- people side of infection: mosquitoes infect people, E -> I -> R, yearly return of immunity, seeding
+      imports.ts                 <- imported infections: background rate plus the 2019 surge (weeks 30-44), on/off
+      movement.ts                <- where everybody spends the day: away trips, travel by population and distance
+      run.ts                     <- the full run: warm-up, then every day with cleaning, fogging, movement, infection, imports and humans; records adults, infections, onsets per municipality, S/E/I/R totals and fogging rounds
+      runJob.ts                  <- one run request, same code in the worker and in tests: checks the request, sets cleaning interval, fogging on/off and trigger, runs, sends progress messages, hands the 12 result arrays over
     worker/
-      sim.worker.ts              <- (planned) runs the engine, posts progress and results
+      sim.worker.ts              <- thin shell: loads the three data files once with fetch, receives run messages, calls runJob and posts the replies (checked by tsc and lint; first real run comes in M5)
     ui/
       controls/ views/ map/ charts/
     state/                       <- policy state, URL sharing, saved presets
@@ -105,6 +116,31 @@ QMSIMULATION3/                   <- project root (no extra folder)
     population.test.ts           <- 18,986 people, 3,797 households, everyone starts susceptible
     biology.test.ts              <- temperature rules for development, incubation, death, eggs
     breeding.test.ts             <- rain window, breeding capacity, larvae crowding (engine checks from section 7 come later)
+    rng-counts.test.ts           <- binomial and poisson counts behave as expected
+    rng-poisson.test.ts          <- poisson mean, variance and exact small-count chances
+    rng-binomial.test.ts         <- binomial mean, variance, exact chances, stays between 0 and n
+    mosquitoes.test.ts           <- starting mosquito numbers per household
+    lifecycle.test.ts            <- cleaning effect and egg laying
+    lifecycle-adults.test.ts     <- adult development and adult death
+    params.test.ts               <- starting positions and settings.json overrides
+    schedule.test.ts             <- staggered cleaning days, compliance, negative days
+    daily.test.ts                <- one mosquito day: counts stay whole and never negative, same seed same result
+    dailyParts.test.ts           <- the three parts together give exactly the same result as one mosquito-only day
+    spinup.test.ts               <- warm-up runs days -150 to -1 and reads weather from the end of the record
+    weather.test.ts              <- 14-day rain sums, day-count check, real weather.json
+    mosquitoRun.test.ts          <- mosquito-only run: same seed same result, cleaning lowers adults
+    mosquitoRunReal.test.ts      <- one mosquito-only run on the real data (2019-2025), prints time and adults per person
+    policyData.test.ts           <- each household gets its municipality's interval, matched by name
+    fogging.test.ts              <- trigger, last-7-days window, cooldown, coverage, kill share
+    infection.test.ts            <- mosquito side of infection: incubation, catching the virus
+    humans.test.ts               <- people side: infection, E -> I -> R, turnover, seeding
+    imports.test.ts              <- surge window, 2019 only, on/off, expected counts
+    movement.test.ts             <- travel table, away and other-municipality shares, counts add up
+    run.test.ts                  <- states add up, same seed same result, world not changed, no disease without seeds or imports, imports start infections, fogging flags add up
+    runRecording.test.ts         <- recorded adult mosquitoes: never rise in cold weather, infectious never exceed all adults, states add up
+    runJob.test.ts               <- progress then one done message, result arrays handed over, same request same result, interval 0 means no cleaning, fogging on/off and trigger, bad requests and a missing municipality give an error message
+    runFullTiming.test.ts        <- temporary: times one full run on the real data (2019-2025), prints time and cases per year; only runs when TIMING is set
+    runPhases.test.ts            <- temporary: times each step of the day separately; only runs when TIMING is set
   docs/
     model-rules.md               <- the one-page rules from M1
     _2nd QM-research.docx        <- research document
@@ -202,7 +238,7 @@ The model rules are unchanged from v1 and v2. The app runs a household-level sim
 **Other rules**
 - 150-day mosquito-only warm-up before the record starts, then 3 infectious people are seeded.
 - People spend 30% of days away from home; 10% of those trips go to another municipality, chosen by population and distance.
-- An optional imported-case surge represents the 2019 epidemic wave (weeks 30-44, 2019 only). This window has not yet been checked against the weekly case data.
+- An optional imported-case surge represents the 2019 epidemic wave (weeks 30-44, 2019 only, on/off). Its size is a setting to be fitted. This window has not yet been checked against the weekly case data.
 - Weekly totals use 52 weeks per year, scaled by the reporting fraction.
 
 **Settings still to be fitted**
@@ -315,11 +351,14 @@ The build goes in order. Each milestone is reached only when its "reached when" 
 - **2.2 Mosquitoes.** Life stages per household; temperature-driven development, survival and egg laying; rainfall-driven breeding sites.
 - **2.3 Cleaning.** Schedules, compliance, removal of immatures and breeding sites, per municipality.
 - **2.4 Fogging.** Case trigger, 7-day wait between rounds, share of households reached.
-- **2.5 Infection.** Biting, spread in both directions, incubation, recovery, imported cases, yearly return of immunity.
+- **2.5 Infection.** Done in three small parts:
+  - **2.5a Mosquito side.** Exposed mosquitoes finish their incubation and become infectious; mosquitoes pick up the virus from infectious people present in the household.
+  - **2.5b Human side.** Infectious mosquitoes infect susceptible people; people move from exposed to infectious to recovered; yearly return of immunity.
+  - **2.5c Imports.** Background imported infections, plus the extra imports in weeks 30 to 44 of 2019 only (on/off).
 - **2.6 Movement.** Trips away from home, trips to other municipalities by population and distance.
-- **2.7 Recording.** Daily new infections, reported cases, mosquito counts.
-- **2.8 Worker and speed test.** Wrap the engine in a Web Worker that posts progress. Time a full 2,557-day run. If it is too slow, optimize the data structures before changing the model.
-- *Reached when:* a full run completes inside the worker with no interface and finishes in seconds.
+- **2.7 Recording.** Daily adults and infectious adults, cleanings, new and imported infections, onsets per municipality (reported cases come from these), S/E/I/R totals, and fogging rounds per municipality.
+- **2.8 Worker and speed test.** Wrap the engine in a Web Worker that posts progress. Time a full 2,557-day run. If it is too slow, optimize the data structures before changing the model. *Result so far:* the full engine takes about 29 s on my laptop (35.8 s before the recording was tidied), two thirds of it in the mosquito steps (egg laying is the biggest at about a third). Decision: no more speed work for now; build the worker with a progress bar and revisit the speed after M3. Done so far: `runJob.ts` (request checks, progress messages, result hand-over) with 13 passing tests. The worker file `src/worker/sim.worker.ts` is written and compiles. Full `npm test`: 226 passed, 2 timing files skipped. The first real run through the worker happens in M5.
+- *Reached when:* a full run completes inside the worker with no interface, with a progress bar, and takes well under a minute (seconds is the later goal).
 
 ### M3: Engine checked
 - **3.1 Basic checks.** Same seed gives the same result; population stays constant; seasons show in mosquito numbers.
