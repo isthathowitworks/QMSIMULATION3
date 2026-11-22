@@ -121,10 +121,16 @@ QMSIMULATION3/                   <- project root (no extra folder)
     worker/
       sim.worker.ts              <- thin shell: loads the three data files once with fetch, receives run messages, calls runJob and posts the replies (checked by tsc and lint; first real run comes in M5)
     ui/
-      controls/ views/ map/ charts/
-    state/                       <- policy state, URL sharing, saved presets
+      controls/
+        ControlPanel.tsx         <- M5 5.1: preset buttons, cleaning interval, compliance (hint above 50%), fogging on/off and trigger, number of runs
+        ControlPanel.css         <- M5 5.1: page width and control styles
+      views/ map/ charts/
+    state/
+      policyControls.ts          <- M5 5.1: the main controls as one object, starting position, six cleaning presets, clamping to the allowed ranges
   tests/
     tsconfig.json                <- settings for the tests only
+    policyControls.test.ts       <- M5 5.1: starting position, six presets, a preset changes interval and compliance only, clamping, rounding, matching preset (7 tests)
+    controlPanel.test.ts         <- M5 5.1: panel renders all presets and the starting position, one active preset, "No cleaning" label, hypothetical hint above 50%, trigger slider off when fogging is off, "case" or "cases" (7 tests)
     data.test.ts                 <- checks the files in public/data (settings.json must be marked fitted, with a note and values inside the ranges the fit searched)
     rng.test.ts                  <- same seed gives same numbers; values stay in range
     population.test.ts           <- 18,986 people, 3,797 households, everyone starts susceptible
@@ -407,7 +413,7 @@ The build goes in order. Each milestone is reached only when its "reached when" 
 - *Reached when:* `settings.json` is saved and the comparison with real cases looks reasonable.
 
 ### M5: First usable app
-- **5.1 Controls.** Cleaning interval, compliance, fogging on/off and trigger, number of runs.
+- **5.1 Controls.** Cleaning interval, compliance, fogging on/off and trigger, number of runs.  *Done:* `src/state/policyControls.ts` (starting position: every 7 days, 50% compliance, fogging on at 1 case, 1 run; maximum 10 runs; six cleaning presets; a preset changes interval and compliance only; interval 0 means no cleaning) and the control panel in `src/ui/controls/ControlPanel.tsx`, shown by `App.tsx`. Compliance above 50% shows a "hypothetical value" hint. The controls do not run anything yet (5.2). 7 + 7 new tests; full npm test: 357 passed, 3 skipped; lint 0 errors; build passes.
 - **5.2 Worker connection.** Send the policy to the worker, show a progress bar, allow cancel.
 - **5.3 Infection curve.** Chosen policy vs. no cleaning.
 - **5.4 Headline number.** Percentage reduction in infections, big and clear.
