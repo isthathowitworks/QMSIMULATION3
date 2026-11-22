@@ -54,14 +54,15 @@ describe('paramsFromSettings', () => {
     bitingRate: 0.3,
     carryingCapacityPerPerson: 3,
     reportingFraction: 0.1,
-    importedSurgeSize: 20,
+    importedSurgeSize: 35,
   }
 
-  it('lays the three settings over the starting positions', () => {
+  it('lays the four settings over the starting positions', () => {
     const p = paramsFromSettings(settings)
     expect(p.biteRate).toBe(0.3)
     expect(p.kPerPerson).toBe(3)
     expect(p.reportFrac).toBe(0.1)
+    expect(p.importedSurgeSize).toBe(35)
   })
 
   it('leaves every other value unchanged', () => {
@@ -69,10 +70,13 @@ describe('paramsFromSettings', () => {
     expect(p.compliance).toBe(DEFAULT_PARAMS.compliance)
     expect(p.fogKill).toBe(DEFAULT_PARAMS.fogKill)
     expect(p.spinupDays).toBe(DEFAULT_PARAMS.spinupDays)
+    expect(p.importSurgeOn).toBe(DEFAULT_PARAMS.importSurgeOn)
+    expect(p.importPerDayPer100k).toBe(DEFAULT_PARAMS.importPerDayPer100k)
   })
 
   it('does not change DEFAULT_PARAMS', () => {
-    paramsFromSettings({ ...settings, bitingRate: 0.9 })
+    paramsFromSettings({ ...settings, bitingRate: 0.9, importedSurgeSize: 99 })
     expect(DEFAULT_PARAMS.biteRate).toBe(0.3)
+    expect(DEFAULT_PARAMS.importedSurgeSize).toBe(20)
   })
 })

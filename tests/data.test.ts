@@ -63,10 +63,28 @@ describe('policy.json', () => {
 })
 
 describe('settings.json', () => {
+  const s = read('settings.json')
+
   it('has the four fitted settings as numbers', () => {
-    const s = read('settings.json')
     for (const k of ['bitingRate', 'carryingCapacityPerPerson', 'reportingFraction', 'importedSurgeSize']) {
       expect(typeof s[k], k).toBe('number')
     }
+  })
+
+  it('is marked as fitted and has a note', () => {
+    expect(s.fitted).toBe(true)
+    expect(typeof s.note).toBe('string')
+    expect(s.note.length).toBeGreaterThan(0)
+  })
+
+  it('has values inside the ranges the fit searched', () => {
+    expect(s.bitingRate).toBeGreaterThanOrEqual(0.1)
+    expect(s.bitingRate).toBeLessThanOrEqual(0.3)
+    expect(s.carryingCapacityPerPerson).toBeGreaterThanOrEqual(0.5)
+    expect(s.carryingCapacityPerPerson).toBeLessThanOrEqual(3)
+    expect(s.reportingFraction).toBeGreaterThanOrEqual(0.005)
+    expect(s.reportingFraction).toBeLessThanOrEqual(0.15)
+    expect(s.importedSurgeSize).toBeGreaterThanOrEqual(0)
+    expect(s.importedSurgeSize).toBeLessThanOrEqual(40)
   })
 })

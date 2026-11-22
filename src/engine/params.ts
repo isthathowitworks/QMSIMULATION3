@@ -50,7 +50,7 @@ export const DEFAULT_PARAMS: Params = {
   popTurnoverPerYear: 0.02,
   seedInfected: 3,
   importPerDayPer100k: 0.05,
-  importedSurgeSize: 20, // placeholder until M4 (same as settings.json)
+  importedSurgeSize: 20, // starting position; settings.json overrides it
   importSurgeOn: true,
   reportFrac: 0.25,
   scale: 10,
@@ -84,12 +84,12 @@ export interface SettingsFile {
 }
 
 // Starting positions with the values from settings.json laid over them.
-// (importedSurgeSize is still left out here; it is decided at M4 whether settings.json overrides it.)
 export function paramsFromSettings(settings: SettingsFile, base: Params = DEFAULT_PARAMS): Params {
   return {
     ...base,
     biteRate: settings.bitingRate,
     kPerPerson: settings.carryingCapacityPerPerson,
     reportFrac: settings.reportingFraction,
+    importedSurgeSize: settings.importedSurgeSize,
   }
 }

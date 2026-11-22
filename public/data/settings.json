@@ -1,1 +1,1 @@
-{"fitted":false,"note":"PLACEHOLDER values. Replace by running fit-settings (milestone M4).","bitingRate":0.3,"carryingCapacityPerPerson":3,"reportingFraction":0.1,"importedSurgeSize":20}
+{"fitted":true,"note":"Fitted to real weekly cases in the 39 modelled barangays (trial 52 of data-private/fit-round2.json). Compliance is not fitted.","bitingRate":0.23526104073893897,"carryingCapacityPerPerson":1.1487920513609424,"reportingFraction":0.007563264196913224,"importedSurgeSize":23.113258935511112}
