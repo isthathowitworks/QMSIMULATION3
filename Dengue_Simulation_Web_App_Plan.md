@@ -87,6 +87,7 @@ QMSIMULATION3/                   <- project root (no extra folder)
     tsconfig.json                <- settings for the scripts only
     prepare-lib.ts               <- shared helpers for the scripts
     prepare-data.ts              <- cleans Datasets into public/data and runs checks
+    fit-lib.ts                   <- M4 4.2b: fit helpers: search ranges, Latin hypercube sampling, weekly reported cases from a run, score (RMSE x (2 - correlation))
     fit-settings.ts              <- (planned, M4) fitting script, uses the same engine
   src/
     engine/                      <- the model: no UI code in here
@@ -147,6 +148,9 @@ QMSIMULATION3/                   <- project root (no extra folder)
     policyChecks.test.ts         <- M3 3.2: on a small world with shared seeds and averaged runs, no cleaning is worst, higher compliance, more frequent cleaning and an easier fogging trigger never raise infections (tolerance 5 people); takes about 22 s
     consistency.test.ts          <- M3 3.3: 0% compliance with fogging off vs the no-cleaning preset (interval 0), both through runJob; nothing cleaned or fogged in either, averages over 20 shared seeds agree (infections within 5 people, adult mosquitoes within 1%); takes about 6 s
     spread.test.ts               <- M3 3.5: same policy, 20 seeds, standard deviation within 6% of the mean and no run more than 15% away (two policies, bite infections on the small world); takes about 5 s
+    weeklyCases.test.ts          <- M4 4.2a: weekly real cases from small examples (slots, sums, gaps, skipped rows) and the real files (2019, 2020, 2021, 2023 have data; totals match)
+    casesFile.test.ts            <- M4 4.2a: data-private/cases-weekly.json exists, right shape, gaps for 2022, 2024, 2025, and is up to date with the case file
+    fitLib.test.ts               <- M4 4.2b: Latin hypercube covers every slice once, weekly sums from onsets, score by hand
     runRecording.test.ts         <- recorded adult mosquitoes: never rise in cold weather, infectious never exceed all adults, states add up
     runJob.test.ts               <- progress then one done message, result arrays handed over, same request same result, interval 0 means no cleaning, fogging on/off and trigger, bad requests and a missing municipality give an error message
     runFullTiming.test.ts        <- temporary: times one full run on the real data (2019-2025), prints time and cases per year; only runs when TIMING is set
@@ -381,6 +385,7 @@ The build goes in order. Each milestone is reached only when its "reached when" 
 ### M4: Settings fitted
 - **4.1 Choose what to fit.** Four settings, same as the earlier Python fit, by random search with the same ranges: `biteRate` 0.10 to 0.35, `kPerPerson` 0.3 to 3.0, `reportFrac` 0.03 to 0.40, `importedSurgeSize` 0 to 40 (extra imported infections per day per 100,000 people, weeks 30 to 44 of 2019 only). All four are searched together. `reportFrac` cannot be solved separately afterwards, because `fogging.ts` uses it to count reported cases for the fogging trigger, so it changes how the epidemic runs whenever fogging is on. The fit script (not the engine) turns infections into reported cases: infections x `scale` x `reportFrac`. Score = RMSE on the mean weekly series x (2 minus correlation), as in the Python fit. The old Python surge covered weeks 28 to 34; the engine surge covers weeks 30 to 44, so the surge range is a guess until the fit shows how it behaves. `paramsFromSettings` does not yet apply `importedSurgeSize`; that code change comes with step 4.3.
 - **4.2a Real weekly cases.** `prepare-data.ts` writes `data-private/cases-weekly.json`: weekly cases for the 39 modelled barangays (matched with `barangay-name-map.csv`), 52 weeks per year. Years with no barangay-level records (2022, 2024, 2025) are gaps (null), not zeros. In a year with records, a week with no record counts as 0. "Not Encoded" weeks are left out. Not under `public/` because the data privacy question (section 8) is still open. A test checks the totals against the case file.
+*Done:* `buildWeeklyCases` in `prepare-lib.ts`, written to `data-private/cases-weekly.json` by `prepare-data.ts`. Real cases in the 39 barangays per year: 2019 337, 2020 86, 2021 38, 2023 9 (2019 will dominate the fit). Full `npm test`: 34 files passed, 2 skipped; 261 tests passed, 2 skipped.
 - **4.2b Fit against real cases.** Use the weeks with barangay-level records (2019, 2020, 2021, 2023), restricted to the scope decided in M1.4. Run `fit-settings.ts` in Node with the same engine the app uses. One run per trial (the M3.5 spread check showed only 2 to 3% run-to-run difference), with Latin hypercube sampling so the random picks cover the ranges evenly.
 - **4.3 Save `settings.json`.** The app reads it; it is the single place to change settings later.
 - **4.4 Compare with real data.** 2019 surge near the right weeks; yearly totals the right order of magnitude; 2022, 2024 and 2025 shown as gaps.
