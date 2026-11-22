@@ -120,6 +120,7 @@ QMSIMULATION3/                   <- project root (no extra folder)
       runJob.ts                  <- one run request, same code in the worker and in tests: checks the request, sets cleaning interval, fogging on/off and trigger, runs, sends progress messages, hands the 12 result arrays over
     worker/
       sim.worker.ts              <- thin shell: loads the three data files once with fetch, receives run messages, calls runJob and posts the replies (checked by tsc and lint; first real run comes in M5)
+      runClient.ts               <- M5 5.2a: talks to the worker for the page: numbers each run, passes on progress, resolves with the result, rejects on an error, Cancel stops the worker and the next run starts a fresh one; takes a worker factory so tests can use a fake worker (no browser code)
     ui/
       controls/
         ControlPanel.tsx         <- M5 5.1: preset buttons, cleaning interval, compliance (hint above 50%), fogging on/off and trigger, number of runs
@@ -131,6 +132,7 @@ QMSIMULATION3/                   <- project root (no extra folder)
     tsconfig.json                <- settings for the tests only
     policyControls.test.ts       <- M5 5.1: starting position, six presets, a preset changes interval and compliance only, clamping, rounding, matching preset (7 tests)
     controlPanel.test.ts         <- M5 5.1: panel renders all presets and the starting position, one active preset, "No cleaning" label, hypothetical hint above 50%, trigger slider off when fogging is off, "case" or "cases" (7 tests)
+    runClient.test.ts            <- M5 5.2a: request gets a type and a numbered id, progress passed on, error reply rejects, ignores replies of another run, second run refused while busy, same worker reused, cancel rejects and next run uses a fresh worker, a broken worker rejects, a late failure of a cancelled worker is ignored (10 tests)
     data.test.ts                 <- checks the files in public/data (settings.json must be marked fitted, with a note and values inside the ranges the fit searched)
     rng.test.ts                  <- same seed gives same numbers; values stay in range
     population.test.ts           <- 18,986 people, 3,797 households, everyone starts susceptible
@@ -414,7 +416,7 @@ The build goes in order. Each milestone is reached only when its "reached when" 
 
 ### M5: First usable app
 - **5.1 Controls.** Cleaning interval, compliance, fogging on/off and trigger, number of runs.  *Done:* `src/state/policyControls.ts` (starting position: every 7 days, 50% compliance, fogging on at 1 case, 1 run; maximum 10 runs; six cleaning presets; a preset changes interval and compliance only; interval 0 means no cleaning) and the control panel in `src/ui/controls/ControlPanel.tsx`, shown by `App.tsx`. Compliance above 50% shows a "hypothetical value" hint. The controls do not run anything yet (5.2). 7 + 7 new tests; full npm test: 357 passed, 3 skipped; lint 0 errors; build passes.
-- **5.2 Worker connection.** Send the policy to the worker, show a progress bar, allow cancel.
+- **5.2 Worker connection.** Send the policy to the worker, show a progress bar, allow cancel. *Split into three steps.* **5.2a (done, 10 tests pass):** `src/worker/runClient.ts` with `tests/runClient.test.ts`, plain TypeScript with no buttons yet. **5.2b:** the real worker factory plus the Run button, progress bar and Cancel button in the page. **5.2c:** a first real run in the browser (progress bar moves, page stays responsive, Cancel works).
 - **5.3 Infection curve.** Chosen policy vs. no cleaning.
 - **5.4 Headline number.** Percentage reduction in infections, big and clear.
 - **5.5 Mosquito counts.** Adults and immatures per person over time.
