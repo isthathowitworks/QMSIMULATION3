@@ -1,11 +1,17 @@
 // Cleans raw study files in data-raw/ into small JSON files in public/data/.
+// Also writes data-private/cases-weekly.json (real weekly cases, never published).
 // Usage: npm run prepare-data
 import { mkdirSync, writeFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
-import { loadWeather, loadPopulation, loadPolicy, loadMap, municipalityCentroids, runDataChecks } from './prepare-lib'
+import {
+  loadWeather, loadPopulation, loadPolicy, loadMap, municipalityCentroids, runDataChecks,
+  loadNameMap, loadBarangayCases, buildWeeklyCases,
+} from './prepare-lib'
 
 const OUT = join(process.cwd(), 'public', 'data')
+const PRIVATE_OUT = join(process.cwd(), 'data-private')
 mkdirSync(OUT, { recursive: true })
+mkdirSync(PRIVATE_OUT, { recursive: true })
 
 const checks = runDataChecks()
 for (const c of checks) console.log(`${c.ok ? 'PASS' : 'FAIL'}  ${c.name}  (${c.detail})`)
@@ -24,6 +30,10 @@ const map = loadMap()
 write('policy.json', { municipalities: loadPolicy(), centroids: municipalityCentroids(map) })
 write('camarines_norte_map.json', map)
 
+// Real weekly cases for the modelled barangays. Goes to data-private/, NOT public/ (privacy question still open).
+const weeklyCases = buildWeeklyCases(loadNameMap(), loadBarangayCases())
+writeFileSync(join(PRIVATE_OUT, 'cases-weekly.json'), JSON.stringify(weeklyCases))
+
 // settings.json is the single place for fitted values. Never overwrite it once it exists.
 const settingsPath = join(OUT, 'settings.json')
 if (!existsSync(settingsPath)) {
@@ -35,3 +45,4 @@ if (!existsSync(settingsPath)) {
 }
 const sim = pop.reduce((s, b) => s + b.simPeople, 0), hh = pop.reduce((s, b) => s + b.households, 0)
 console.log(`\nWrote public/data. Simulated people: ${sim}, households: ${hh}`)
+console.log(`Wrote data-private/cases-weekly.json. Years with records: ${weeklyCases.yearsWithData.join(', ')}`)

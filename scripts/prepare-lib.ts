@@ -115,6 +115,38 @@ export const loadBarangayCases = (): CaseRow[] =>
     year: Number(r.Year), cases: Number(r.Cases), deaths: Number(r.Deaths),
   }))
 
+export const FIRST_YEAR = 2019
+export const LAST_YEAR = 2025
+export const WEEKS_PER_YEAR = 52
+
+/** Real weekly cases in the modelled barangays. `weekly[(year - firstYear) * weeksPerYear + (week - 1)]`.
+ *  A year with no barangay-level records at all is null for every week (a gap, not zero cases). */
+export interface WeeklyCases { firstYear: number; weeksPerYear: number; yearsWithData: number[]; weekly: (number | null)[] }
+
+/** Adds up recorded cases per epi week for the barangays in the name map.
+ *  Skips "Not Encoded" rows and week numbers outside 1 to 52. In a year that has records,
+ *  a week with no record counts as 0. */
+export function buildWeeklyCases(nameMap: NameMapRow[], cases: CaseRow[]): WeeklyCases {
+  const modelled = new Set(
+    nameMap.filter((r) => r.matchType !== 'UNMATCHED').map((r) => `${r.municipality}|${r.barangayCaseRecord}`),
+  )
+  const yearsWithData = [...new Set(cases.map((c) => c.year))]
+    .filter((y) => y >= FIRST_YEAR && y <= LAST_YEAR)
+    .sort((a, b) => a - b)
+  const total = (LAST_YEAR - FIRST_YEAR + 1) * WEEKS_PER_YEAR
+  const weekly: (number | null)[] = Array.from({ length: total }, (_, i) =>
+    yearsWithData.includes(FIRST_YEAR + Math.floor(i / WEEKS_PER_YEAR)) ? 0 : null,
+  )
+  for (const c of cases) {
+    if (c.epiWeek === null || c.epiWeek < 1 || c.epiWeek > WEEKS_PER_YEAR) continue
+    if (!modelled.has(`${c.municipality}|${c.barangay}`)) continue
+    const i = (c.year - FIRST_YEAR) * WEEKS_PER_YEAR + (c.epiWeek - 1)
+    if (i < 0 || i >= total) continue
+    weekly[i] = (weekly[i] ?? 0) + c.cases
+  }
+  return { firstYear: FIRST_YEAR, weeksPerYear: WEEKS_PER_YEAR, yearsWithData, weekly }
+}
+
 export interface Check { name: string; ok: boolean; detail: string }
 
 /** The section 7 data checks. Returns every result; callers decide how to fail. */

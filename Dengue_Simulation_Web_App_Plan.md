@@ -59,6 +59,9 @@ The one weakness of this stack is statistics and fitting, which are clumsier tha
 
 ```
 QMSIMULATION3/                   <- project root (no extra folder)
+  .github/
+    workflows/
+      test.yml                   <- M3 3.4: runs all tests on every push and pull request
   Datasets/                      <- original raw data, read directly, never copied
     Dengue Cases csv/            <- 4 case csvs
     camarines_norte_map.json
@@ -69,6 +72,9 @@ QMSIMULATION3/                   <- project root (no extra folder)
     Questions with answers.docx
   data-raw/
     barangay-name-map.csv        <- links population names to case-record names
+  data-private/                  <- (planned, M4 4.2a) written by prepare-data, never published (not under public/)
+    cases-weekly.json            <- real weekly cases for the 39 modelled barangays, used by the fit (gaps for 2022, 2024, 2025)
+  public/
   public/
     data/                        <- written by prepare-data, loaded by the app at start
       weather.json
@@ -137,6 +143,10 @@ QMSIMULATION3/                   <- project root (no extra folder)
     imports.test.ts              <- surge window, 2019 only, on/off, expected counts
     movement.test.ts             <- travel table, away and other-municipality shares, counts add up
     run.test.ts                  <- states add up, same seed same result, world not changed, no disease without seeds or imports, imports start infections, fogging flags add up
+    engineChecks.test.ts         <- M3 3.1: warm and wet gives more than twice the adults of cool and dry, adults fall when the weather turns cool and dry, a different seed gives a different run
+    policyChecks.test.ts         <- M3 3.2: on a small world with shared seeds and averaged runs, no cleaning is worst, higher compliance, more frequent cleaning and an easier fogging trigger never raise infections (tolerance 5 people); takes about 22 s
+    consistency.test.ts          <- M3 3.3: 0% compliance with fogging off vs the no-cleaning preset (interval 0), both through runJob; nothing cleaned or fogged in either, averages over 20 shared seeds agree (infections within 5 people, adult mosquitoes within 1%); takes about 6 s
+    spread.test.ts               <- M3 3.5: same policy, 20 seeds, standard deviation within 6% of the mean and no run more than 15% away (two policies, bite infections on the small world); takes about 5 s
     runRecording.test.ts         <- recorded adult mosquitoes: never rise in cold weather, infectious never exceed all adults, states add up
     runJob.test.ts               <- progress then one done message, result arrays handed over, same request same result, interval 0 means no cleaning, fogging on/off and trigger, bad requests and a missing municipality give an error message
     runFullTiming.test.ts        <- temporary: times one full run on the real data (2019-2025), prints time and cases per year; only runs when TIMING is set
@@ -308,7 +318,7 @@ The population file covers 39 barangays, but the case records cover 242 barangay
 - San Lorenzo Ruiz: Matacong (the case file has "Matacong (Pob.)")
 - San Vicente: San Jose (the case file has "San Jose (Iraya Norte)")
 
-`data-raw/barangay-name-map.csv` records these matches. This scope question has to be settled before fitting (section 8).
+`data-raw/barangay-name-map.csv` records these matches. All 39 were checked (the Matacong and San Jose matches each have only one candidate in the case records), so the fit uses all 39. The scope decision is recorded in section 8.
 
 **Other things to know**
 - Two case files have swapped names (By_Age_Group is weekly, Weekly_Trends is by age). Rename them or keep this note.
@@ -357,19 +367,21 @@ The build goes in order. Each milestone is reached only when its "reached when" 
   - **2.5c Imports.** Background imported infections, plus the extra imports in weeks 30 to 44 of 2019 only (on/off).
 - **2.6 Movement.** Trips away from home, trips to other municipalities by population and distance.
 - **2.7 Recording.** Daily adults and infectious adults, cleanings, new and imported infections, onsets per municipality (reported cases come from these), S/E/I/R totals, and fogging rounds per municipality.
-- **2.8 Worker and speed test.** Wrap the engine in a Web Worker that posts progress. Time a full 2,557-day run. If it is too slow, optimize the data structures before changing the model. *Result so far:* the full engine takes about 29 s on my laptop (35.8 s before the recording was tidied), two thirds of it in the mosquito steps (egg laying is the biggest at about a third). Decision: no more speed work for now; build the worker with a progress bar and revisit the speed after M3. Done so far: `runJob.ts` (request checks, progress messages, result hand-over) with 13 passing tests. The worker file `src/worker/sim.worker.ts` is written and compiles. Full `npm test`: 226 passed, 2 timing files skipped. The first real run through the worker happens in M5.
+- **2.8 Worker and speed test.** Wrap the engine in a Web Worker that posts progress. Time a full 2,557-day run. If it is too slow, optimize the data structures before changing the model. *Result so far:* the full engine takes about 29 s on my laptop (35.8 s before the recording was tidied), two thirds of it in the mosquito steps (egg laying is the biggest at about a third). Decision: no more speed work for now; build the worker with a progress bar and revisit the speed after M3. Done so far: `runJob.ts` (request checks, progress messages, result hand-over) with 13 passing tests. The worker file `src/worker/sim.worker.ts` is written and compiles. Full npm test: 237 passed, 2 timing files skipped. The first real run through the worker happens in M5.
 - *Reached when:* a full run completes inside the worker with no interface, with a progress bar, and takes well under a minute (seconds is the later goal).
 
 ### M3: Engine checked
-- **3.1 Basic checks.** Same seed gives the same result; population stays constant; seasons show in mosquito numbers.
-- **3.2 Policy checks.** No cleaning is worst; more compliance or more frequent cleaning never raises infections; an easier fogging trigger never raises infections. These are tested on averaged runs with shared seeds (see section 7).
-- **3.3 Consistency check.** 0% compliance with fogging off equals the no-cleaning preset.
-- **3.4 Automate.** All checks run as Vitest tests and on every change in the repository.
+- **3.1 Basic checks.** Same seed gives the same result; population stays constant; seasons show in mosquito numbers. *Done:* same seed and constant population were already in `run.test.ts`; `engineChecks.test.ts` adds the seasons check (warm and wet beats cool and dry by more than 2 times, adults fall when the weather turns) and a different-seed check. 3 tests pass.
+- **3.2 Policy checks.** No cleaning is worst; more compliance or more frequent cleaning never raises infections; an easier fogging trigger never raises infections. These are tested on averaged runs with shared seeds (see section 7). *Done:* `policyChecks.test.ts` runs 20 shared seeds per policy on a small stand-in world (320 people, 200 days, warm and wet weather) and counts people infected by mosquito bites, leaving imports out. A check fails only if the "better" policy is worse by more than 5 people on average. 5 tests pass in about 22 s.
+- **3.3 Consistency check.** 0% compliance with fogging off equals the no-cleaning preset. *Done:* `consistency.test.ts` runs both through `runJob`. With 0% compliance the engine still rolls a random number for each household that is due, so the two are not identical run for run. The test therefore checks that nothing is cleaned or fogged in either, and that averages over 20 shared seeds agree (infections within 5 people, adult mosquitoes within 1%). A third test confirms real cleaning is clearly lower, so the comparison can tell a difference. 3 tests pass in about 6 s.
+- **3.4 Automate.** All checks run as Vitest tests and on every change in the repository. *Done:* the workflow file `.github/workflows/test.yml` runs `npm ci` and `npm test` on every push and pull request (Node 24, 15-minute limit). The first run on GitHub passed in 55 s. Full `npm test`: 237 passed, 2 timing files skipped.
+- **3.5 Run-to-run spread check.** Repeated runs of the same policy give similar totals. *Done:* `spread.test.ts` runs two policies (no cleaning, and weekly at 50% compliance) with 20 different seeds each on the small stand-in world from 3.2, and checks the people infected by mosquito bites. The first run gave a standard deviation of 1.9% of the mean for no cleaning (mean 273.8, range 263 to 280) and 2.8% for weekly at 50% (mean 236.6, range 224 to 251). The test fails if the standard deviation is more than 6% of the mean, or if any single run is more than 15% away from the mean (about twice the worst values seen). It also checks that there are enough infections and that different seeds give different runs. 8 tests pass in about 5 s. This backs up the averaged comparisons in 3.2 and 3.3 and the "average of several runs, with the spread shown" control in the app.
 - *Reached when:* every check in section 7 passes automatically. No interface work before this.
 
 ### M4: Settings fitted
-- **4.1 Choose what to fit.** Biting rate, mosquito carrying capacity, reporting fraction, imported-case surge.
-- **4.2 Fit against real cases.** Use the weeks with barangay-level records (2019, 2020, 2021, 2023), restricted to the scope decided in M1.4. Run `fit-settings.ts` in Node with the same engine the app uses.
+- **4.1 Choose what to fit.** Four settings, same as the earlier Python fit, by random search with the same ranges: `biteRate` 0.10 to 0.35, `kPerPerson` 0.3 to 3.0, `reportFrac` 0.03 to 0.40, `importedSurgeSize` 0 to 40 (extra imported infections per day per 100,000 people, weeks 30 to 44 of 2019 only). All four are searched together. `reportFrac` cannot be solved separately afterwards, because `fogging.ts` uses it to count reported cases for the fogging trigger, so it changes how the epidemic runs whenever fogging is on. The fit script (not the engine) turns infections into reported cases: infections x `scale` x `reportFrac`. Score = RMSE on the mean weekly series x (2 minus correlation), as in the Python fit. The old Python surge covered weeks 28 to 34; the engine surge covers weeks 30 to 44, so the surge range is a guess until the fit shows how it behaves. `paramsFromSettings` does not yet apply `importedSurgeSize`; that code change comes with step 4.3.
+- **4.2a Real weekly cases.** `prepare-data.ts` writes `data-private/cases-weekly.json`: weekly cases for the 39 modelled barangays (matched with `barangay-name-map.csv`), 52 weeks per year. Years with no barangay-level records (2022, 2024, 2025) are gaps (null), not zeros. In a year with records, a week with no record counts as 0. "Not Encoded" weeks are left out. Not under `public/` because the data privacy question (section 8) is still open. A test checks the totals against the case file.
+- **4.2b Fit against real cases.** Use the weeks with barangay-level records (2019, 2020, 2021, 2023), restricted to the scope decided in M1.4. Run `fit-settings.ts` in Node with the same engine the app uses. One run per trial (the M3.5 spread check showed only 2 to 3% run-to-run difference), with Latin hypercube sampling so the random picks cover the ranges evenly.
 - **4.3 Save `settings.json`.** The app reads it; it is the single place to change settings later.
 - **4.4 Compare with real data.** 2019 surge near the right weeks; yearly totals the right order of magnitude; 2022, 2024 and 2025 shown as gaps.
 - *Reached when:* `settings.json` is saved and the comparison with real cases looks reasonable.
@@ -455,9 +467,9 @@ Single runs of a random simulation can break "more cleaning never makes things w
 - **Speed:** the simulation always runs in a Web Worker, with a progress bar.
 - **Sharing:** a public link on a static host, and policies shareable through the page link.
 - **Fitting:** a Node script that uses the same engine as the app, run before the app is finished (M4). Not done in the page.
+- **Data scope:** fit and run on the barangays that have population data in the model (all 39 barangays in the population file, which all match a barangay in the case records). Results are then scaled up to the whole province as a display step and shown as "Estimated cases for Camarines Norte". The headline never says how many barangays are modelled. The method goes in a "How this is estimated" note behind an info button, saying the model is fitted to the barangays with population data and scaled to the province. Later options, after the fit works: (1) scale-up by municipality population, (2) a hold-out check that compares the scaled estimate with recorded cases in the other 208 barangays, (3) "rest of municipality" blocks if the check shows a problem. Adding populations for all 242 barangays is a separate later milestone.
 
 **Still open**
-- **Data scope (most important):** the model has 39 barangays, but the case records cover 242. Options: (a) fit only to cases from the 34 matched barangays, which keeps the scope consistent and is the proposed default; (b) add populations for the other barangays so the model covers the province. Also confirm why these 39 barangays were chosen.
 - **Fogging presets:** which trigger values to offer?
 - **Hosting choice:** GitHub Pages, Netlify or Vercel? Any restrictions from the PHO or the school?
 - **Data privacy:** may the barangay-level case data be published with the app? If not, the overlay is dropped or limited to municipality totals.
