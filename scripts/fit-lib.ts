@@ -17,6 +17,9 @@ export const FIT_RANGES: Record<keyof FitSettings, [number, number]> = {
 
 export const FIT_KEYS = Object.keys(FIT_RANGES) as (keyof FitSettings)[]
 
+/** A search range for each fitted setting: [lowest, highest]. */
+export type FitRanges = Record<keyof FitSettings, [number, number]>
+
 /** Days in each simulated year, 2019 to 2025. Day 0 is 1 January 2019. */
 export const YEAR_DAYS = [365, 366, 365, 365, 365, 366, 365]
 export const WEEKS_PER_YEAR = 52
@@ -33,8 +36,9 @@ export function makeRandom(seed: number): () => number {
   }
 }
 
-/** Latin hypercube sample: n combinations. Each range is cut into n equal slices and every slice is used exactly once. */
-export function latinHypercube(n: number, seed: number): FitSettings[] {
+/** Latin hypercube sample: n combinations. Each range is cut into n equal slices and every slice is used exactly once.
+ *  Without `ranges`, the search ranges in FIT_RANGES are used. */
+export function latinHypercube(n: number, seed: number, ranges: FitRanges = FIT_RANGES): FitSettings[] {
   const random = makeRandom(seed)
   const columns = FIT_KEYS.map((key) => {
     const order = Array.from({ length: n }, (_, i) => i)
@@ -42,7 +46,7 @@ export function latinHypercube(n: number, seed: number): FitSettings[] {
       const j = Math.floor(random() * (i + 1))
       ;[order[i], order[j]] = [order[j], order[i]]
     }
-    const [lo, hi] = FIT_RANGES[key]
+    const [lo, hi] = ranges[key]
     return order.map((slice) => lo + ((slice + random()) / n) * (hi - lo))
   })
   return Array.from({ length: n }, (_, i) => {
@@ -117,4 +121,17 @@ export function scoreFit(real: (number | null)[], sim: number[]): FitScore {
     totalSim: s.reduce((x, y) => x + y, 0),
     score: rmse * (2 - (Number.isNaN(correlation) ? 0 : correlation)),
   }
+}
+
+
+/** Fairer score for choosing settings (lower is better). Two parts:
+ *  - shape: 2 x (1 - correlation), so a series that does not follow the real weekly pattern cannot win
+ *  - size: |ln(totalSim / totalReal)|, so 2x too high and 2x too low count the same
+ *  A correlation that cannot be calculated counts as 0. No simulated cases at all gives Infinity. */
+export function scoreV2(fit: Pick<FitScore, 'correlation' | 'totalReal' | 'totalSim'>): number {
+  if (fit.totalReal <= 0 || fit.totalSim <= 0) return Infinity
+  const corr = Number.isNaN(fit.correlation) ? 0 : fit.correlation
+  const shape = 2 * (1 - corr)
+  const size = Math.abs(Math.log(fit.totalSim / fit.totalReal))
+  return shape + size
 }

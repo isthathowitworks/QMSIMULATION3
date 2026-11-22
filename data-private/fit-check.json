@@ -1,0 +1,126 @@
+{
+  "file": "data-private/fit-round2.json",
+  "seeds": 3,
+  "trials": [
+    {
+      "trial": 52,
+      "settings": {
+        "biteRate": 0.23526104073893897,
+        "kPerPerson": 1.1487920513609424,
+        "reportFrac": 0.007563264196913224,
+        "importedSurgeSize": 23.113258935511112
+      },
+      "roundScoreV2": 0.21630031395271243,
+      "runs": [
+        {
+          "seed": 1,
+          "totalSim": 458.6363409008179,
+          "correlation": 0.9040873851670532,
+          "scoreV2": 0.21630031395271243,
+          "foggingRounds": 159
+        },
+        {
+          "seed": 2,
+          "totalSim": 438.5936907789978,
+          "correlation": 0.9041996512808428,
+          "scoreV2": 0.2607599411709004,
+          "foggingRounds": 163
+        },
+        {
+          "seed": 3,
+          "totalSim": 433.8288343349425,
+          "correlation": 0.8910625790549365,
+          "scoreV2": 0.2979574712196973,
+          "foggingRounds": 167
+        }
+      ],
+      "summary": {
+        "meanSim": 443.68628867158606,
+        "minSim": 433.8288343349425,
+        "maxSim": 458.6363409008179,
+        "meanScoreV2": 0.2583392421144367,
+        "meanFogging": 163
+      }
+    },
+    {
+      "trial": 39,
+      "settings": {
+        "biteRate": 0.10673533664240192,
+        "kPerPerson": 2.8342689840646926,
+        "reportFrac": 0.010209069873963018,
+        "importedSurgeSize": 17.447164062410593
+      },
+      "roundScoreV2": 0.3363016012124026,
+      "runs": [
+        {
+          "seed": 1,
+          "totalSim": 422.45131138458964,
+          "correlation": 0.8851784463307247,
+          "scoreV2": 0.3363016012124026,
+          "foggingRounds": 158
+        },
+        {
+          "seed": 2,
+          "totalSim": 425.0035788530804,
+          "correlation": 0.8873923168566685,
+          "scoreV2": 0.325850471271028,
+          "foggingRounds": 158
+        },
+        {
+          "seed": 3,
+          "totalSim": 425.82030444299744,
+          "correlation": 0.888648783459051,
+          "scoreV2": 0.3214176910642933,
+          "foggingRounds": 158
+        }
+      ],
+      "summary": {
+        "meanSim": 424.4250648935558,
+        "minSim": 422.45131138458964,
+        "maxSim": 425.82030444299744,
+        "meanScoreV2": 0.3278565878492413,
+        "meanFogging": 158
+      }
+    },
+    {
+      "trial": 29,
+      "settings": {
+        "biteRate": 0.1359232365114925,
+        "kPerPerson": 1.6179076866634812,
+        "reportFrac": 0.022512812031491195,
+        "importedSurgeSize": 15.96281565974156
+      },
+      "roundScoreV2": 0.8080046591197292,
+      "runs": [
+        {
+          "seed": 1,
+          "totalSim": 839.953016894939,
+          "correlation": 0.8863043020906642,
+          "scoreV2": 0.8080046591197292,
+          "foggingRounds": 191
+        },
+        {
+          "seed": 2,
+          "totalSim": 837.4766075714736,
+          "correlation": 0.8917902514481512,
+          "scoreV2": 0.794080134450788,
+          "foggingRounds": 187
+        },
+        {
+          "seed": 3,
+          "totalSim": 861.1150602045399,
+          "correlation": 0.8814212962657417,
+          "scoreV2": 0.8426528438090515,
+          "foggingRounds": 192
+        }
+      ],
+      "summary": {
+        "meanSim": 846.1815615569841,
+        "minSim": 837.4766075714736,
+        "maxSim": 861.1150602045399,
+        "meanScoreV2": 0.8149125457931895,
+        "meanFogging": 190
+      }
+    }
+  ]
+}

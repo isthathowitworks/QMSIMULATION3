@@ -72,9 +72,8 @@ QMSIMULATION3/                   <- project root (no extra folder)
     Questions with answers.docx
   data-raw/
     barangay-name-map.csv        <- links population names to case-record names
-  data-private/                  <- (planned, M4 4.2a) written by prepare-data, never published (not under public/)
+  data-private/                  <- M4: cases-weekly.json from prepare-data (4.2a), fit results from the fit scripts (4.2b); never published (not under public/)
     cases-weekly.json            <- real weekly cases for the 39 modelled barangays, used by the fit (gaps for 2022, 2024, 2025)
-  public/
   public/
     data/                        <- written by prepare-data, loaded by the app at start
       weather.json
@@ -87,8 +86,10 @@ QMSIMULATION3/                   <- project root (no extra folder)
     tsconfig.json                <- settings for the scripts only
     prepare-lib.ts               <- shared helpers for the scripts
     prepare-data.ts              <- cleans Datasets into public/data and runs checks
-    fit-lib.ts                   <- M4 4.2b: fit helpers: search ranges, Latin hypercube sampling, weekly reported cases from a run, score (RMSE x (2 - correlation))
-    fit-settings.ts              <- (planned, M4) fitting script, uses the same engine
+    fit-lib.ts                   <- M4 4.2b: fit helpers: search ranges (custom ranges allowed), Latin hypercube sampling, weekly reported cases from a run, score (RMSE x (2 - correlation)) and scoreV2 (used to rank trials)
+    fit-settings.ts              <- M4 4.2b: fitting script, uses the same engine: random search with Latin hypercube sampling under the real policy, custom ranges with --range, saves results to data-private (npm run fit)
+    rescore-fit.ts               <- M4 4.2b: re-ranks the saved trials of a fit with scoreV2, no engine run
+    check-fit.ts                 <- M4 4.2b: re-runs the best trials of a fit with several engine seeds to see whether a good score holds up
   src/
     engine/                      <- the model: no UI code in here
       rng.ts                     <- seeded random numbers (next, int, binomial by inversion, poisson by PTRS)
@@ -150,7 +151,12 @@ QMSIMULATION3/                   <- project root (no extra folder)
     spread.test.ts               <- M3 3.5: same policy, 20 seeds, standard deviation within 6% of the mean and no run more than 15% away (two policies, bite infections on the small world); takes about 5 s
     weeklyCases.test.ts          <- M4 4.2a: weekly real cases from small examples (slots, sums, gaps, skipped rows) and the real files (2019, 2020, 2021, 2023 have data; totals match)
     casesFile.test.ts            <- M4 4.2a: data-private/cases-weekly.json exists, right shape, gaps for 2022, 2024, 2025, and is up to date with the case file
-    fitLib.test.ts               <- M4 4.2b: Latin hypercube covers every slice once, weekly sums from onsets, score by hand
+    fitSettings.test.ts          <- M4 4.2b: command line options (--trials, --seed, --out, --range), range parsing, the four fitted settings laid over the starting positions
+    latinHypercubeRanges.test.ts <- M4 4.2b: Latin hypercube with custom ranges: values stay inside the ranges, every slice used once, same result as before without ranges
+    scoreV2.test.ts              <- M4 4.2b: scoreV2 by hand: perfect match is 0, too high and too low count the same, no cases gives Infinity, a flat series loses
+    rescoreFit.test.ts           <- M4 4.2b: re-ranking saved trials with scoreV2, a null correlation counts as 0, the input order is not changed
+    checkFit.test.ts             <- M4 4.2b: check-fit command line options and the summary of the runs of one trial
+    fitRunTrial.test.ts          <- temporary: M4 4.2b: one trial on the real data run twice, same seed gives the same result, prints total cases and fogging rounds; only runs when TIMING is set (about 90 s)
     runRecording.test.ts         <- recorded adult mosquitoes: never rise in cold weather, infectious never exceed all adults, states add up
     runJob.test.ts               <- progress then one done message, result arrays handed over, same request same result, interval 0 means no cleaning, fogging on/off and trigger, bad requests and a missing municipality give an error message
     runFullTiming.test.ts        <- temporary: times one full run on the real data (2019-2025), prints time and cases per year; only runs when TIMING is set
@@ -158,7 +164,7 @@ QMSIMULATION3/                   <- project root (no extra folder)
   docs/
     model-rules.md               <- the one-page rules from M1
     _2nd QM-research.docx        <- research document
-  package.json                   <- scripts: prepare-data, test
+  package.json                   <- scripts: dev, build, lint, preview, prepare-data, fit (runs the settings fit), test
 ```
 
 ### How the pieces talk
@@ -383,10 +389,9 @@ The build goes in order. Each milestone is reached only when its "reached when" 
 - *Reached when:* every check in section 7 passes automatically. No interface work before this.
 
 ### M4: Settings fitted
-- **4.1 Choose what to fit.** Four settings, same as the earlier Python fit, by random search with the same ranges: `biteRate` 0.10 to 0.35, `kPerPerson` 0.3 to 3.0, `reportFrac` 0.03 to 0.40, `importedSurgeSize` 0 to 40 (extra imported infections per day per 100,000 people, weeks 30 to 44 of 2019 only). All four are searched together. `reportFrac` cannot be solved separately afterwards, because `fogging.ts` uses it to count reported cases for the fogging trigger, so it changes how the epidemic runs whenever fogging is on. The fit script (not the engine) turns infections into reported cases: infections x `scale` x `reportFrac`. Score = RMSE on the mean weekly series x (2 minus correlation), as in the Python fit. The old Python surge covered weeks 28 to 34; the engine surge covers weeks 30 to 44, so the surge range is a guess until the fit shows how it behaves. `paramsFromSettings` does not yet apply `importedSurgeSize`; that code change comes with step 4.3.
-- **4.2a Real weekly cases.** `prepare-data.ts` writes `data-private/cases-weekly.json`: weekly cases for the 39 modelled barangays (matched with `barangay-name-map.csv`), 52 weeks per year. Years with no barangay-level records (2022, 2024, 2025) are gaps (null), not zeros. In a year with records, a week with no record counts as 0. "Not Encoded" weeks are left out. Not under `public/` because the data privacy question (section 8) is still open. A test checks the totals against the case file.
-*Done:* `buildWeeklyCases` in `prepare-lib.ts`, written to `data-private/cases-weekly.json` by `prepare-data.ts`. Real cases in the 39 barangays per year: 2019 337, 2020 86, 2021 38, 2023 9 (2019 will dominate the fit). Full `npm test`: 34 files passed, 2 skipped; 261 tests passed, 2 skipped.
-- **4.2b Fit against real cases.** Use the weeks with barangay-level records (2019, 2020, 2021, 2023), restricted to the scope decided in M1.4. Run `fit-settings.ts` in Node with the same engine the app uses. One run per trial (the M3.5 spread check showed only 2 to 3% run-to-run difference), with Latin hypercube sampling so the random picks cover the ranges evenly.
+- **4.1 Choose what to fit.** Four settings, same as the earlier Python fit, by random search with the same ranges: `biteRate` 0.10 to 0.35, `kPerPerson` 0.3 to 3.0, `reportFrac` 0.03 to 0.40, `importedSurgeSize` 0 to 40 (extra imported infections per day per 100,000 people, weeks 30 to 44 of 2019 only). All four are searched together. `reportFrac` cannot be solved separately afterwards, because `fogging.ts` uses it to count reported cases for the fogging trigger, so it changes how the epidemic runs whenever fogging is on. The fit script (not the engine) turns infections into reported cases: infections x `scale` x `reportFrac`. Score = RMSE on the mean weekly series x (2 minus correlation), as in the Python fit. The old Python surge covered weeks 28 to 34; the engine surge covers weeks 30 to 44, so the surge range is a guess until the fit shows how it behaves. `paramsFromSettings` does not yet apply `importedSurgeSize`; that code change comes with step 4.3. *Update after fitting:* trials are ranked with `scoreV2` (2 x (1 minus correlation) plus the absolute log of simulated total over real total), not with the score above, because that score picked a flat series that did not follow the weekly pattern. Round 2 used narrower ranges: `reportFrac` 0.005 to 0.15, `biteRate` 0.10 to 0.30, `kPerPerson` 0.5 to 3.0, `importedSurgeSize` 0 to 40 (unchanged).
+- **4.2a Real weekly cases.** `prepare-data.ts` writes `data-private/cases-weekly.json`: weekly cases for the 39 modelled barangays (matched with `barangay-name-map.csv`), 52 weeks per year. Years with no barangay-level records (2022, 2024, 2025) are gaps (null), not zeros. In a year with records, a week with no record counts as 0. "Not Encoded" weeks are left out. Not under `public/` because the data privacy question (section 8) is still open. A test checks the totals against the case file *Done:* `buildWeeklyCases` in `prepare-lib.ts`, written to `data-private/cases-weekly.json` by `prepare-data.ts`. Real cases in the 39 barangays per year: 2019 337, 2020 86, 2021 38, 2023 9 (2019 will dominate the fit). Full `npm test`: 34 files passed, 2 skipped; 261 tests passed, 2 skipped.
+- **4.2b Fit against real cases.** Use the weeks with barangay-level records (2019, 2020, 2021, 2023), restricted to the scope decided in M1.4. Run `fit-settings.ts` in Node with the same engine the app uses. One run per trial (the M3.5 spread check showed only 2 to 3% run-to-run difference), with Latin hypercube sampling so the random picks cover the ranges evenly. *Done so far:* `fit-settings.ts` runs under the real policy (`policy.json`) with compliance at its starting position (0.5, not fitted), engine seed 1 for every trial, and saves results to `data-private/` after every trial (`npm run fit`). Round 1: 30 trials, seed 1, the ranges in 4.1. The shape was good (correlation about 0.89) but the totals were about 3 times too high (best by `scoreV2`: trial 25, 1,536 simulated against 470 real). Round 2: 60 trials, seed 2, the narrower ranges above; several trials came close to the real total with correlation about 0.9. Seed check (`check-fit.ts`, top 3 trials, engine seeds 1 to 3): trial 52 gave 434 to 459 simulated cases (mean `scoreV2` 0.258), trial 39 gave 422 to 426 (0.328), trial 29 gave 837 to 861 (0.815); fogging triggered 158 to 192 rounds per run. Chosen for `settings.json`: trial 52 (`biteRate` 0.2353, `kPerPerson` 1.1488, `reportFrac` 0.0076, `importedSurgeSize` 23.1133). Main alternative: trial 39 (`biteRate` 0.1067, `kPerPerson` 2.8343, `reportFrac` 0.0102, `importedSurgeSize` 17.4472). Settings must be read at full precision from the results file: the rounded values from the printout gave 521 cases for trial 52 instead of 459. Still open: correlation is 0.86 to 0.92 in almost every trial, so the fit mostly judges size; trials 52 and 39 fit equally well with very different `biteRate` and `kPerPerson`, and how each responds to cleaning and fogging is not compared yet; the surge window (weeks 30 to 44 of 2019) is not checked against the weekly data.
 - **4.3 Save `settings.json`.** The app reads it; it is the single place to change settings later.
 - **4.4 Compare with real data.** 2019 surge near the right weeks; yearly totals the right order of magnitude; 2022, 2024 and 2025 shown as gaps.
 - *Reached when:* `settings.json` is saved and the comparison with real cases looks reasonable.

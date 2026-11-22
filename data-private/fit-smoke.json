@@ -1,0 +1,48 @@
+{
+  "seed": 1,
+  "trialsPlanned": 2,
+  "keys": [
+    "biteRate",
+    "kPerPerson",
+    "reportFrac",
+    "importedSurgeSize"
+  ],
+  "results": [
+    {
+      "trial": 1,
+      "settings": {
+        "biteRate": 0.10034196514752694,
+        "kPerPerson": 1.6073101625894197,
+        "reportFrac": 0.16333748111035676,
+        "importedSurgeSize": 9.105422543361783
+      },
+      "fit": {
+        "rmse": 47.62644628305639,
+        "mae": 14.504710393039261,
+        "correlation": 0.8738332193219545,
+        "totalReal": 470,
+        "totalSim": 3203.048004574105,
+        "score": 53.63532168572548
+      },
+      "seconds": 20.7374865
+    },
+    {
+      "trial": 2,
+      "settings": {
+        "biteRate": 0.290930879994994,
+        "kPerPerson": 2.0294897289946676,
+        "reportFrac": 0.29377243613824244,
+        "importedSurgeSize": 29.775766348466277
+      },
+      "fit": {
+        "rmse": 379.66180403194045,
+        "mae": 111.23457356383291,
+        "correlation": 0.906424232222427,
+        "totalReal": 470,
+        "totalSim": 23495.919442336588,
+        "score": 415.1889488400478
+      },
+      "seconds": 22.5673939
+    }
+  ]
+}

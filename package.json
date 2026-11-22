@@ -9,6 +9,7 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "prepare-data": "tsx scripts/prepare-data.ts",
+    "fit": "tsx scripts/fit-settings.ts",
     "test": "vitest run"
   },
   "dependencies": {
