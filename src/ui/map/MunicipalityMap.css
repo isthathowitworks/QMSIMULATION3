@@ -1,0 +1,49 @@
+.map-card {
+  flex: 1 1 280px;
+  min-width: 0;
+}
+
+.map-title {
+  margin: 0 0 8px;
+  font-size: 1rem;
+  text-align: center;
+}
+
+.map-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.map-shape {
+  stroke: #ffffff;
+  stroke-width: 0.8;
+  stroke-linejoin: round;
+}
+
+.map-shape-missing {
+  fill: #cccccc;
+}
+
+.map-legend {
+  margin: 8px auto 0;
+  max-width: 320px;
+}
+
+.map-legend-bar {
+  height: 10px;
+  border-radius: 2px;
+}
+
+.map-legend-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 2px;
+  font-size: 0.8rem;
+}
+
+.map-legend-title {
+  margin: 2px 0 0;
+  font-size: 0.8rem;
+  text-align: center;
+}
