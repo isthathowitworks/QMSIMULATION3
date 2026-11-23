@@ -13,6 +13,17 @@ export interface MunicipalityPeople {
   simPeople: number[]
 }
 
+// What the details box shows for one municipality (6.3).
+export interface MunicipalityDetails {
+  name: string
+  // people in the simulation (the real population is about 10 times larger)
+  people: number
+  // bite infections over the whole run
+  infections: number
+  // bite infections per 1,000 simulated people (the number the map colors come from)
+  perThousand: number
+}
+
 // `biteInfections` is the flat array from RunResult: row = day, column = municipality.
 // Gives the total over all days for each municipality, in the same order as the columns.
 export function biteTotalsPerMunicipality(
@@ -59,4 +70,22 @@ export function perThousand(totals: readonly number[], simPeople: readonly numbe
     throw new Error(`got ${totals.length} totals but ${simPeople.length} population numbers`)
   }
   return totals.map((total, i) => (simPeople[i] > 0 ? (total / simPeople[i]) * 1000 : 0))
+}
+
+// One entry per municipality for the details box: name, people, bite infections over the whole run
+// and bite infections per 1,000 people. `totals` is one run's bite infections per municipality
+// (for example Comparison.policyBitesByMunicipality), in the order of first appearance in the
+// population file. Throws when the number of totals does not match the number of municipalities.
+export function municipalityDetails(
+  population: PopulationData,
+  totals: readonly number[],
+): MunicipalityDetails[] {
+  const { names, simPeople } = municipalityPeople(population)
+  const rates = perThousand(totals, simPeople)
+  return names.map((name, i) => ({
+    name,
+    people: simPeople[i],
+    infections: totals[i],
+    perThousand: rates[i],
+  }))
 }

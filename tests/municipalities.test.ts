@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   biteTotalsPerMunicipality,
+  municipalityDetails,
   municipalityPeople,
   perThousand,
 } from '../src/state/municipalities'
@@ -67,5 +68,50 @@ describe('perThousand', () => {
 
   it('throws when the two lists have different lengths', () => {
     expect(() => perThousand([1, 2], [100])).toThrow('2 totals but 1 population')
+  })
+})
+
+describe('municipalityDetails', () => {
+  const population = {
+    barangays: [
+      { municipality: 'A', simPeople: 100, households: 20 },
+      { municipality: 'B', simPeople: 50, households: 10 },
+      { municipality: 'A', simPeople: 100, households: 20 },
+    ],
+  }
+
+  it('gives the name, people, infections and infections per 1,000 for each municipality', () => {
+    // A has 200 simulated people (100+100), B has 50
+    const details = municipalityDetails(population, [20, 5])
+    expect(details).toHaveLength(2)
+    expect(details[0].name).toBe('A')
+    expect(details[0].people).toBe(200)
+    expect(details[0].infections).toBe(20)
+    expect(details[0].perThousand).toBeCloseTo(100, 10) // 20 / 200 * 1000
+    expect(details[1].name).toBe('B')
+    expect(details[1].people).toBe(50)
+    expect(details[1].infections).toBe(5)
+    expect(details[1].perThousand).toBeCloseTo(100, 10) // 5 / 50 * 1000
+  })
+
+  it('keeps the order of first appearance in the population file', () => {
+    const details = municipalityDetails(population, [0, 0])
+    expect(details.map((d) => d.name)).toEqual(['A', 'B'])
+  })
+
+  it('gives the same per 1,000 numbers as perThousand', () => {
+    const totals = [13, 4]
+    const details = municipalityDetails(population, totals)
+    const expected = perThousand(totals, [200, 50])
+    expect(details.map((d) => d.perThousand)).toEqual(expected)
+  })
+
+  it('gives an empty list for a file with no barangays', () => {
+    expect(municipalityDetails({ barangays: [] }, [])).toEqual([])
+  })
+
+  it('throws when the number of totals does not match the number of municipalities', () => {
+    expect(() => municipalityDetails(population, [1, 2, 3])).toThrow('3 totals but 2 population')
+    expect(() => municipalityDetails(population, [1])).toThrow('1 totals but 2 population')
   })
 })
