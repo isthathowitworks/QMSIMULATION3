@@ -2,9 +2,10 @@
 // municipality, and gets the names and simulated people per municipality from the
 // population file. Plain functions: no fetching, no drawing, no React.
 
-// The part of public/data/population.json that is needed here.
+// The part of public/data/population.json that is needed here: the municipality name and the simulated
+// people (for the map), and the households (for the household dots).
 export interface PopulationData {
-  barangays: { municipality: string; simPeople: number }[]
+  barangays: { municipality: string; simPeople: number; households: number }[]
 }
 
 export interface MunicipalityPeople {

@@ -7,6 +7,18 @@ import type { PopulationData } from '../src/state/municipalities'
 import type { MapDataState } from '../src/state/useMapData'
 import ResultsPanel from '../src/ui/run/ResultsPanel'
 
+// 12 households (4 in each of the three municipalities) and 2 weekly snapshots
+const HOUSEHOLDS = 12
+
+// week 0: three households infectious, the rest susceptible; week 1: everybody recovered
+const baselineHouseholdStates = new Uint8Array(HOUSEHOLDS * 2)
+baselineHouseholdStates.fill(2, 0, 3)
+baselineHouseholdStates.fill(3, HOUSEHOLDS)
+
+// week 0: one household infectious; week 1: everybody susceptible
+const policyHouseholdStates = new Uint8Array(HOUSEHOLDS * 2)
+policyHouseholdStates[0] = 2
+
 const comparison: Comparison = {
   baselineWeekly: [4, 8, 2],
   policyWeekly: [2, 3, 1],
@@ -19,6 +31,9 @@ const comparison: Comparison = {
   policyImmaturesPerPerson: [15, 10, 8],
   baselineBitesByMunicipality: [6, 5, 3],
   policyBitesByMunicipality: [3, 2, 1],
+  householdCount: HOUSEHOLDS,
+  baselineHouseholdStates,
+  policyHouseholdStates,
 }
 
 // A small fake map with three municipalities that fits the three bite numbers above.
@@ -45,9 +60,11 @@ const fakeMap = {
   features: [triangle('X', 0), triangle('Y', 2), triangle('Z', 4)],
 } as unknown as MapData
 
-// 100 simulated people in each of the three municipalities
-function fakePopulation(names: string[]): PopulationData {
-  return { barangays: names.map((municipality) => ({ municipality, simPeople: 100 })) } as unknown as PopulationData
+// 100 simulated people and a number of households in each municipality
+function fakePopulation(names: string[], households = 4): PopulationData {
+  return {
+    barangays: names.map((municipality) => ({ municipality, simPeople: 100, households })),
+  } as unknown as PopulationData
 }
 
 const ready: MapDataState = {
@@ -128,7 +145,8 @@ describe('ResultsPanel', () => {
 describe('ResultsPanel maps', () => {
   it('shows the two maps between the infection chart and the mosquito charts', () => {
     const markup = render(comparison)
-    expect(count(markup, 'map-card')).toBe(2)
+    // two maps and two household dot cards
+    expect(count(markup, 'map-card')).toBe(4)
     expect(markup).toContain('>Do nothing</h3>')
     expect(markup).toContain('>Your policy</h3>')
     const infections = markup.indexOf('aria-label="Infection curve"')
@@ -169,6 +187,49 @@ describe('ResultsPanel maps', () => {
     const markup = render(comparison, twoOnly)
     expect(markup).toContain('does not match the number of municipalities')
     expect(count(markup, 'map-card')).toBe(0)
+    expect(markup.match(/<polyline/g)).toHaveLength(6)
+  })
+})
+
+describe('ResultsPanel household dots', () => {
+  it('shows the household dots and the week slider after the maps and before the mosquito charts', () => {
+    const markup = render(comparison)
+    const maps = markup.indexOf('aria-label="Maps of the municipalities"')
+    const dots = markup.indexOf('aria-label="Household dots"')
+    const slider = markup.indexOf('aria-label="Week control"')
+    const adults = markup.indexOf('aria-label="Adult mosquitoes"')
+    expect(dots).toBeGreaterThan(maps)
+    expect(slider).toBeGreaterThan(dots)
+    expect(slider).toBeLessThan(adults)
+    expect(markup).toContain('Highest state in the household')
+  })
+
+  it('starts paused on the first week', () => {
+    const markup = render(comparison)
+    expect(markup).toContain('>Play</button>')
+    expect(markup).toContain('aria-label="Week of the run"')
+  })
+
+  it('shows no dots and no slider while the map files load or if they fail', () => {
+    for (const state of [{ status: 'loading' }, { status: 'failed', message: 'status 404' }] as MapDataState[]) {
+      const markup = render(comparison, state)
+      expect(markup).not.toContain('aria-label="Household dots"')
+      expect(markup).not.toContain('aria-label="Week control"')
+    }
+  })
+
+  it('shows a note and no dots when the households in the population file do not fit the run', () => {
+    // 3 municipalities with 5 households each is 15 households, the run has 12
+    const wrongHouseholds: MapDataState = {
+      status: 'ready',
+      files: { map: fakeMap, population: fakePopulation(['X', 'Y', 'Z'], 5) },
+    }
+    const markup = render(comparison, wrongHouseholds)
+    expect(markup).toContain('The household dots do not match this run, so they are not shown.')
+    expect(markup).not.toContain('aria-label="Household dots"')
+    expect(markup).not.toContain('aria-label="Week control"')
+    // the maps and the charts are not affected
+    expect(markup).toContain('aria-label="Maps of the municipalities"')
     expect(markup.match(/<polyline/g)).toHaveLength(6)
   })
 })

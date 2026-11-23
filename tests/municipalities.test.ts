@@ -36,11 +36,11 @@ describe('municipalityPeople', () => {
   it('keeps the order of first appearance and adds up the simulated people', () => {
     const population = {
       barangays: [
-        { municipality: 'A', simPeople: 100 },
-        { municipality: 'B', simPeople: 50 },
-        { municipality: 'A', simPeople: 20 },
-        { municipality: 'C', simPeople: 30 },
-        { municipality: 'B', simPeople: 5 },
+        { municipality: 'A', simPeople: 100, households: 20 },
+        { municipality: 'B', simPeople: 50, households: 10 },
+        { municipality: 'A', simPeople: 20, households: 4 },
+        { municipality: 'C', simPeople: 30, households: 6 },
+        { municipality: 'B', simPeople: 5, households: 1 },
       ],
     }
     const result = municipalityPeople(population)

@@ -1,0 +1,28 @@
+.week-slider {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: 8px 0;
+}
+
+.week-slider-button {
+  min-width: 4.5rem;
+  padding: 6px 12px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.week-slider-button:disabled {
+  cursor: not-allowed;
+}
+
+.week-slider-range {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
+.week-slider-label {
+  font-size: 0.9rem;
+  white-space: nowrap;
+}

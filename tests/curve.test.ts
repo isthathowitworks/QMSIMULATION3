@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { RunResult } from '../src/engine/run'
 import {
   compareRuns,
+  householdSnapshots,
   mosquitoInfections,
   peopleIn,
   percentReduction,
@@ -17,15 +18,19 @@ interface Extra {
   people?: number // simulated people, all susceptible
   municipalities?: number // how many municipalities (default 1)
   bites?: number[] // bite infections, flat: row = day, column = municipality
+  households?: number // how many households (default 0)
+  states?: number[] // household states, flat: row = snapshot (every 7 days), column = household
 }
 
 // a result with only the fields the comparison reads filled in
 function makeResult(newInfections: number[], imported?: number[], extra: Extra = {}): RunResult {
   const days = newInfections.length
   const m = extra.municipalities ?? 1
+  const h = extra.households ?? 0
   return {
     days,
     municipalityCount: m,
+    householdCount: h,
     adults: extra.adults ? Int32Array.from(extra.adults) : new Int32Array(days),
     immatures: extra.immatures ? Int32Array.from(extra.immatures) : new Int32Array(days),
     infectiousAdults: new Int32Array(days),
@@ -40,6 +45,7 @@ function makeResult(newInfections: number[], imported?: number[], extra: Extra =
     onsets: new Int32Array(days * m),
     fogged: new Uint8Array(days * m),
     foggingRounds: new Int32Array(m),
+    householdStates: extra.states ? Uint8Array.from(extra.states) : new Uint8Array(Math.ceil(days / 7) * h),
   }
 }
 
@@ -127,6 +133,17 @@ describe('percentReduction', () => {
   })
 })
 
+describe('householdSnapshots', () => {
+  it('counts the rows of a flat household-state array', () => {
+    expect(householdSnapshots(new Uint8Array(6), 3)).toBe(2)
+    expect(householdSnapshots(new Uint8Array(12), 3)).toBe(4)
+  })
+
+  it('is 0 when there are no households', () => {
+    expect(householdSnapshots(new Uint8Array(0), 0)).toBe(0)
+  })
+})
+
 describe('compareRuns', () => {
   it('gives weekly curves, totals and the reduction, leaving imports out', () => {
     const baseline = makeResult(new Array<number>(14).fill(10), new Array<number>(14).fill(0))
@@ -169,6 +186,18 @@ describe('compareRuns', () => {
     expect(totalOf(c.policyBitesByMunicipality)).toBe(c.policyTotal) // 4
   })
 
+  it('gives the household states of both runs and the number of households', () => {
+    // 14 days = 2 snapshots (day 0 and day 7), 3 households
+    const zeros = new Array<number>(14).fill(0)
+    const baseline = makeResult(zeros, zeros, { households: 3, states: [0, 0, 1, 2, 2, 3] })
+    const policy = makeResult(zeros, zeros, { households: 3, states: [0, 0, 0, 0, 1, 1] })
+    const c = compareRuns(baseline, policy)
+    expect(c.householdCount).toBe(3)
+    expect(Array.from(c.baselineHouseholdStates)).toEqual([0, 0, 1, 2, 2, 3])
+    expect(Array.from(c.policyHouseholdStates)).toEqual([0, 0, 0, 0, 1, 1])
+    expect(householdSnapshots(c.baselineHouseholdStates, c.householdCount)).toBe(2)
+  })
+
   it('refuses two runs with a different number of days', () => {
     expect(() => compareRuns(makeResult([1, 2, 3]), makeResult([1, 2]))).toThrow(/different number of days/)
   })
@@ -177,5 +206,20 @@ describe('compareRuns', () => {
     const two = makeResult([1, 2], undefined, { municipalities: 2 })
     const three = makeResult([1, 2], undefined, { municipalities: 3 })
     expect(() => compareRuns(two, three)).toThrow(/different number of municipalities/)
+  })
+
+  it('refuses two runs with a different number of households', () => {
+    const zeros = new Array<number>(14).fill(0)
+    const three = makeResult(zeros, zeros, { households: 3 })
+    const four = makeResult(zeros, zeros, { households: 4 })
+    expect(() => compareRuns(three, four)).toThrow(/different number of households/)
+  })
+
+  it('refuses a run whose household states are not one row per 7 days', () => {
+    const zeros = new Array<number>(14).fill(0)
+    const good = makeResult(zeros, zeros, { households: 3 })
+    const bad = makeResult(zeros, zeros, { households: 3, states: [0, 1, 2] }) // needs 6 values
+    expect(() => compareRuns(good, bad)).toThrow(/policy run has 3 household state values, expected 6/)
+    expect(() => compareRuns(bad, good)).toThrow(/baseline run has 3 household state values, expected 6/)
   })
 })

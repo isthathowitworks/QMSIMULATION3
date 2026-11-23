@@ -8,9 +8,11 @@ import { RunCancelled } from '../src/worker/runClient'
 import type { RunClient, RunInput } from '../src/worker/runClient'
 
 // a small fake result: 14 days, 1 municipality, `total` mosquito infections on day 0 (all in
-// municipality 0), no imports, 10 people, `adults` adult mosquitoes and twice as many immatures every day
-function makeReply(total: number, adults = 70): DoneReply {
+// municipality 0), no imports, 10 people, `adults` adult mosquitoes and twice as many immatures every day,
+// and 2 households with 2 snapshots (day 0 and day 7), every household in state `state`
+function makeReply(total: number, adults = 70, state = 0): DoneReply {
   const days = 14
+  const households = 2
   const newInfections = new Int32Array(days)
   newInfections[0] = total
   const biteInfections = new Int32Array(days)
@@ -22,6 +24,7 @@ function makeReply(total: number, adults = 70): DoneReply {
     result: {
       days,
       municipalityCount: 1,
+      householdCount: households,
       newInfections,
       imported: new Int32Array(days),
       biteInfections,
@@ -31,6 +34,7 @@ function makeReply(total: number, adults = 70): DoneReply {
       exposed: new Int32Array(days),
       infectious: new Int32Array(days),
       recovered: new Int32Array(days),
+      householdStates: new Uint8Array(Math.ceil(days / 7) * households).fill(state),
     },
   } as unknown as DoneReply
 }
@@ -184,6 +188,19 @@ describe('createRunController', () => {
     const comparison = c.getState().comparison
     expect(comparison?.baselineBitesByMunicipality).toEqual([10])
     expect(comparison?.policyBitesByMunicipality).toEqual([5])
+  })
+
+  it('also gives the household states of both runs and the number of households', async () => {
+    const fake = fakeClient()
+    const c = createRunController(fake.client, loadOk, () => 1)
+    const started = c.start(DEFAULT_CONTROLS)
+    // the baseline has every household in state 2 (infectious), the policy run in state 1 (exposed)
+    await finishRuns(fake, makeReply(10, 70, 2), makeReply(5, 70, 1))
+    await started
+    const comparison = c.getState().comparison
+    expect(comparison?.householdCount).toBe(2)
+    expect(Array.from(comparison?.baselineHouseholdStates ?? [])).toEqual([2, 2, 2, 2])
+    expect(Array.from(comparison?.policyHouseholdStates ?? [])).toEqual([1, 1, 1, 1])
   })
 
   it('reuses the baseline and the seed on the next start, so only the policy run is new', async () => {

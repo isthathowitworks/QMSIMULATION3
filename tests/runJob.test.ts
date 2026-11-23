@@ -4,6 +4,7 @@ import type { Weather } from '../src/engine/weather'
 import type { PolicyFile } from '../src/engine/policyData'
 import { DEFAULT_PARAMS } from '../src/engine/params'
 import type { Params } from '../src/engine/params'
+import { SNAPSHOT_EVERY } from '../src/engine/run'
 import { runJob } from '../src/engine/runJob'
 import type { EngineData, RunRequest, WorkerReply, DoneReply, ProgressReply } from '../src/engine/runJob'
 
@@ -118,18 +119,20 @@ describe('runJob', () => {
     expect(done.result.adults.length).toBe(DAYS)
     expect(done.result.immatures.length).toBe(DAYS)
     expect(done.result.onsets.length).toBe(DAYS * M)
+    expect(done.result.householdStates.length).toBe(Math.ceil(DAYS / SNAPSHOT_EVERY) * HOUSEHOLDS)
   })
 
-  it('hands over the 14 memory blocks of the result with the done message', () => {
+  it('hands over the 15 memory blocks of the result with the done message', () => {
     const { replies, transfers } = run(request())
     const done = doneOf(replies)
     expect(transfers.length).toBe(1)
-    expect(transfers[0].length).toBe(14)
+    expect(transfers[0].length).toBe(15)
     for (const b of transfers[0]) expect(b).toBeInstanceOf(ArrayBuffer)
     expect(transfers[0]).toContain(done.result.adults.buffer)
     expect(transfers[0]).toContain(done.result.immatures.buffer)
     expect(transfers[0]).toContain(done.result.onsets.buffer)
     expect(transfers[0]).toContain(done.result.biteInfections.buffer)
+    expect(transfers[0]).toContain(done.result.householdStates.buffer)
   })
 
   it('gives the same result for the same request', () => {

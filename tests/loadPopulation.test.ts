@@ -41,7 +41,19 @@ describe('loadPopulation', () => {
   })
 
   it('throws when a barangay has no municipality name or simPeople is not a number', async () => {
-    const broken = { barangays: [{ municipality: 'A', simPeople: 'many' }] }
+    const broken = { barangays: [{ municipality: 'A', simPeople: 'many', households: 20 }] }
     await expect(loadPopulation('/', fakeFetch(broken).f)).rejects.toThrow('not a number')
+  })
+
+  it('throws when a barangay has no households', async () => {
+    const broken = { barangays: [{ municipality: 'A', simPeople: 100 }] }
+    await expect(loadPopulation('/', fakeFetch(broken).f)).rejects.toThrow('households')
+  })
+
+  it('throws when households is not a whole number of 0 or more', async () => {
+    const fraction = { barangays: [{ municipality: 'A', simPeople: 100, households: 1.5 }] }
+    const negative = { barangays: [{ municipality: 'A', simPeople: 100, households: -2 }] }
+    await expect(loadPopulation('/', fakeFetch(fraction).f)).rejects.toThrow('households')
+    await expect(loadPopulation('/', fakeFetch(negative).f)).rejects.toThrow('households')
   })
 })

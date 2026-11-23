@@ -65,13 +65,14 @@ export function checkRequest(req: RunRequest): string | null {
   return null
 }
 
-// The memory blocks inside a result. Handing these over (instead of copying them)
+// The memory blocks inside a result (15 of them). Handing these over (instead of copying them)
 // makes sending a result back from the worker instant.
 export function transferables(r: RunResult): ArrayBuffer[] {
   const arrays = [
     r.adults, r.immatures, r.infectiousAdults, r.cleanings, r.newInfections, r.imported,
     r.susceptible, r.exposed, r.infectious, r.recovered,
     r.biteInfections, r.onsets, r.fogged, r.foggingRounds,
+    r.householdStates,
   ]
   return arrays.map((a) => a.buffer as ArrayBuffer)
 }

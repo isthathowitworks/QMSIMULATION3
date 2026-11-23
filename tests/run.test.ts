@@ -1,11 +1,12 @@
 import { describe, it, expect } from 'vitest'
 import type { World } from '../src/engine/population'
+import { SUSCEPTIBLE, EXPOSED, INFECTIOUS, RECOVERED } from '../src/engine/population'
 import type { Weather } from '../src/engine/weather'
 import type { PolicyArrays } from '../src/engine/policyData'
 import type { Centroids } from '../src/engine/movement'
 import { DEFAULT_PARAMS } from '../src/engine/params'
 import type { Params } from '../src/engine/params'
-import { runSimulation } from '../src/engine/run'
+import { runSimulation, householdHighestState, SNAPSHOT_EVERY } from '../src/engine/run'
 
 const HOUSEHOLDS = 40
 const SIZE = 4
@@ -197,5 +198,78 @@ describe('runSimulation', () => {
       (done, total) => calls.push([done, total]))
     expect(calls.length).toBeGreaterThan(1)
     expect(calls[calls.length - 1]).toEqual([DAYS, DAYS])
+  })
+
+  it('records one snapshot of every household every 7 days, starting on day 0', () => {
+    const r = go(LOTS_OF_IMPORTS)
+    expect(SNAPSHOT_EVERY).toBe(7)
+    expect(r.householdCount).toBe(HOUSEHOLDS)
+    expect(r.householdStates.length).toBe(Math.ceil(DAYS / SNAPSHOT_EVERY) * HOUSEHOLDS)
+  })
+
+  it('household snapshots hold only the four state numbers', () => {
+    const r = go(LOTS_OF_IMPORTS)
+    for (const v of r.householdStates) {
+      expect(Number.isInteger(v)).toBe(true)
+      expect(v).toBeGreaterThanOrEqual(SUSCEPTIBLE)
+      expect(v).toBeLessThanOrEqual(RECOVERED)
+    }
+  })
+
+  it('with no disease, every household is susceptible in every snapshot', () => {
+    const r = go(NO_DISEASE)
+    for (const v of r.householdStates) expect(v).toBe(SUSCEPTIBLE)
+  })
+
+  it('infectious households fit the daily count of infectious people on the snapshot days', () => {
+    const r = go(LOTS_OF_IMPORTS)
+    const snapshots = Math.ceil(DAYS / SNAPSHOT_EVERY)
+    let seen = 0
+    for (let s = 0; s < snapshots; s++) {
+      const day = s * SNAPSHOT_EVERY
+      let households = 0
+      for (let h = 0; h < HOUSEHOLDS; h++) {
+        if (r.householdStates[s * HOUSEHOLDS + h] === INFECTIOUS) households++
+      }
+      // every infectious household has between 1 and SIZE infectious people
+      expect(households).toBeLessThanOrEqual(r.infectious[day])
+      expect(households * SIZE).toBeGreaterThanOrEqual(r.infectious[day])
+      seen += households
+    }
+    expect(seen).toBeGreaterThan(0)
+  })
+
+  it('gives the same household snapshots for the same seed', () => {
+    const a = go(LOTS_OF_IMPORTS, 5)
+    const b = go(LOTS_OF_IMPORTS, 5)
+    expect(Array.from(b.householdStates)).toEqual(Array.from(a.householdStates))
+  })
+})
+
+describe('householdHighestState', () => {
+  it('shows infectious, then exposed, then recovered, then susceptible', () => {
+    const world = makeWorld()
+    const state = new Uint8Array(PEOPLE) // everybody susceptible
+    state[1 * SIZE + 1] = RECOVERED // household 1: one recovered among susceptible people
+    state[2 * SIZE] = RECOVERED // household 2: recovered and exposed
+    state[2 * SIZE + 1] = EXPOSED
+    state[3 * SIZE] = EXPOSED // household 3: exposed, infectious and recovered
+    state[3 * SIZE + 1] = INFECTIOUS
+    state[3 * SIZE + 2] = RECOVERED
+    state.fill(RECOVERED, 4 * SIZE, 5 * SIZE) // household 4: everybody recovered
+    const out = new Uint8Array(HOUSEHOLDS)
+    householdHighestState(world, state, out, 0)
+    expect(Array.from(out.slice(0, 6))).toEqual([
+      SUSCEPTIBLE, RECOVERED, EXPOSED, INFECTIOUS, RECOVERED, SUSCEPTIBLE,
+    ])
+  })
+
+  it('writes from the offset and leaves the rest of the array alone', () => {
+    const world = makeWorld()
+    const state = new Uint8Array(PEOPLE)
+    const out = new Uint8Array(HOUSEHOLDS * 2).fill(9)
+    householdHighestState(world, state, out, HOUSEHOLDS)
+    for (let i = 0; i < HOUSEHOLDS; i++) expect(out[i]).toBe(9)
+    for (let i = HOUSEHOLDS; i < HOUSEHOLDS * 2; i++) expect(out[i]).toBe(SUSCEPTIBLE)
   })
 })

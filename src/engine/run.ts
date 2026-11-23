@@ -23,11 +23,15 @@ import { createTimers, applyInitialImmune, seedInfection, infectPeople, updateHu
 import { importInfections } from './imports'
 import { createRng } from './rng'
 
+// A household snapshot is taken on day 0 and then every this many days.
+export const SNAPSHOT_EVERY = 7
+
 // Everything recorded during a run. One entry per day, unless it says per municipality.
 // The "per municipality" arrays are flat: row = day, column = municipality (world order).
 export interface RunResult {
   days: number
   municipalityCount: number
+  householdCount: number
   adults: Int32Array // all adult mosquitoes in the study area (susceptible, exposed, infectious)
   immatures: Int32Array // all immature mosquitoes in the study area (every age, 0 to 24 days)
   infectiousAdults: Int32Array // infectious adult mosquitoes
@@ -42,6 +46,38 @@ export interface RunResult {
   onsets: Int32Array // per municipality: people who became infectious that day (cases)
   fogged: Uint8Array // per municipality: 1 if a fogging round happened that day
   foggingRounds: Int32Array // per municipality: total rounds over the whole run
+  // per household: the highest state of its people at the end of the day (0 susceptible, 1 exposed,
+  // 2 infectious, 3 recovered), one snapshot on day 0 and then every SNAPSHOT_EVERY days;
+  // flat: row = snapshot (day / SNAPSHOT_EVERY), column = household (world order)
+  householdStates: Uint8Array
+}
+
+// How the four states rank when one household has to show only one of them:
+// infectious first, then exposed, then recovered, then susceptible.
+const RANK = new Uint8Array(4)
+RANK[SUSCEPTIBLE] = 0
+RANK[RECOVERED] = 1
+RANK[EXPOSED] = 2
+RANK[INFECTIOUS] = 3
+
+// Writes the highest state of each household into `out`, starting at `offset`
+// (one entry per household, in world order). `state` has one entry per person.
+export function householdHighestState(
+  world: World,
+  state: Uint8Array,
+  out: Uint8Array,
+  offset: number,
+): void {
+  const households = world.householdSize.length
+  for (let h = 0; h < households; h++) {
+    const first = world.householdFirstPerson[h]
+    const end = first + world.householdSize[h]
+    let best = SUSCEPTIBLE
+    for (let p = first; p < end; p++) {
+      if (RANK[state[p]] > RANK[best]) best = state[p]
+    }
+    out[offset + h] = best
+  }
 }
 
 // `compliance` is the chance per household that a due household really cleans.
@@ -99,6 +135,7 @@ export function runSimulation(
   const result: RunResult = {
     days,
     municipalityCount: M,
+    householdCount: households,
     adults: new Int32Array(days),
     immatures: new Int32Array(days),
     infectiousAdults: new Int32Array(days),
@@ -113,6 +150,7 @@ export function runSimulation(
     onsets: new Int32Array(days * M),
     fogged: new Uint8Array(days * M),
     foggingRounds: new Int32Array(M),
+    householdStates: new Uint8Array(Math.ceil(days / SNAPSHOT_EVERY) * households),
   }
 
   for (let day = 0; day < days; day++) {
@@ -181,6 +219,11 @@ export function runSimulation(
     result.exposed[day] = stateCount[EXPOSED]
     result.infectious[day] = stateCount[INFECTIOUS]
     result.recovered[day] = stateCount[RECOVERED]
+
+    // household snapshot on day 0 and then every SNAPSHOT_EVERY days (no random numbers used)
+    if (day % SNAPSHOT_EVERY === 0) {
+      householdHighestState(w, state, result.householdStates, (day / SNAPSHOT_EVERY) * households)
+    }
 
     if (onProgress && (day % 30 === 0 || day === days - 1)) onProgress(day + 1, days)
   }

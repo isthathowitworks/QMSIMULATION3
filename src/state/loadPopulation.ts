@@ -1,5 +1,6 @@
 // Loads public/data/population.json in the page, the same way loadParams.ts loads settings.json.
-// The map needs the municipality names and the simulated people per municipality.
+// The map needs the municipality names, the simulated people per municipality and the households
+// per barangay (for the household dots).
 
 import type { PopulationData } from './municipalities'
 
@@ -17,10 +18,16 @@ export async function loadPopulation(
   }
   const ok = population.barangays.every(
     (b) =>
-      typeof b.municipality === 'string' && typeof b.simPeople === 'number' && Number.isFinite(b.simPeople),
+      typeof b.municipality === 'string' &&
+      typeof b.simPeople === 'number' &&
+      Number.isFinite(b.simPeople) &&
+      Number.isInteger(b.households) &&
+      b.households >= 0,
   )
   if (!ok) {
-    throw new Error(`${url} has a barangay without a municipality name or with simPeople that is not a number`)
+    throw new Error(
+      `${url} has a barangay without a municipality name, or with simPeople or households that is not a number (households must be a whole number, 0 or more)`,
+    )
   }
   return population
 }

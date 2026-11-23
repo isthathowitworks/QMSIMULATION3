@@ -1,0 +1,81 @@
+.dots-shape {
+  fill: #f4f4f4;
+  stroke: #cfcfcf;
+  stroke-width: 0.8;
+  stroke-linejoin: round;
+}
+
+.dots-dot {
+  fill: none;
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+
+.dots-dot-susceptible {
+  stroke: #9aa5b1;
+}
+
+.dots-dot-recovered {
+  stroke: #1f77b4;
+}
+
+.dots-dot-exposed {
+  stroke: #f2a20c;
+}
+
+.dots-dot-infectious {
+  stroke: #d62728;
+}
+
+.dots-legend-title {
+  margin: 8px 0 0;
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+.dots-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 12px;
+  margin: 4px auto 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.8rem;
+}
+
+.dots-legend li {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.dots-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.dots-swatch-susceptible {
+  background: #9aa5b1;
+}
+
+.dots-swatch-recovered {
+  background: #1f77b4;
+}
+
+.dots-swatch-exposed {
+  background: #f2a20c;
+}
+
+.dots-swatch-infectious {
+  background: #d62728;
+}
+
+.dots-note {
+  flex: 1 1 100%;
+  margin: 0;
+  font-size: 0.8rem;
+  text-align: center;
+}

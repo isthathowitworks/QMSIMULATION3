@@ -1,6 +1,6 @@
 // Turns two finished runs (the policy and the "do nothing" baseline) into what the page shows:
 // weekly infection curves, totals, the percentage reduction, weekly mosquitoes per person,
-// and bite infections per municipality.
+// bite infections per municipality, and the household states for the dots.
 // Only infections from mosquito bites are counted: imports come from outside the study area,
 // so the policy cannot reach them.
 
@@ -22,6 +22,12 @@ export interface Comparison {
   // World.municipalities. Each list adds up to the total of its run.
   baselineBitesByMunicipality: number[]
   policyBitesByMunicipality: number[]
+  // Household states for the dots, one byte per household, recorded every 7 days.
+  // Flat: row = snapshot (day / 7), column = household in world order.
+  // 0 susceptible, 1 exposed, 2 infectious, 3 recovered (the highest state in the household).
+  householdCount: number
+  baselineHouseholdStates: Uint8Array
+  policyHouseholdStates: Uint8Array
 }
 
 // People infected by mosquito bites each day.
@@ -72,6 +78,22 @@ export function percentReduction(baselineTotal: number, policyTotal: number): nu
   return ((baselineTotal - policyTotal) / baselineTotal) * 100
 }
 
+// How many snapshots (rows, one per 7 days) a flat household-state array holds.
+// With no households there is nothing to show, so it is 0.
+export function householdSnapshots(states: ArrayLike<number>, householdCount: number): number {
+  return householdCount > 0 ? states.length / householdCount : 0
+}
+
+// A run must hold one snapshot every 7 days (day 0 included), one byte per household.
+function checkHouseholdStates(result: RunResult, label: string): void {
+  const expected = Math.ceil(result.days / 7) * result.householdCount
+  if (result.householdStates.length !== expected) {
+    throw new Error(
+      `the ${label} run has ${result.householdStates.length} household state values, expected ${expected}`,
+    )
+  }
+}
+
 export function compareRuns(baseline: RunResult, policy: RunResult): Comparison {
   if (baseline.days !== policy.days) {
     throw new Error(`the two runs have a different number of days (${baseline.days} and ${policy.days})`)
@@ -81,6 +103,13 @@ export function compareRuns(baseline: RunResult, policy: RunResult): Comparison 
       `the two runs have a different number of municipalities (${baseline.municipalityCount} and ${policy.municipalityCount})`,
     )
   }
+  if (baseline.householdCount !== policy.householdCount) {
+    throw new Error(
+      `the two runs have a different number of households (${baseline.householdCount} and ${policy.householdCount})`,
+    )
+  }
+  checkHouseholdStates(baseline, 'baseline')
+  checkHouseholdStates(policy, 'policy')
   const baselineDaily = mosquitoInfections(baseline)
   const policyDaily = mosquitoInfections(policy)
   const baselineTotal = totalOf(baselineDaily)
@@ -99,5 +128,8 @@ export function compareRuns(baseline: RunResult, policy: RunResult): Comparison 
     policyImmaturesPerPerson: perPersonWeekly(policy.immatures, policyPeople),
     baselineBitesByMunicipality: biteTotalsPerMunicipality(baseline.biteInfections, baseline.municipalityCount),
     policyBitesByMunicipality: biteTotalsPerMunicipality(policy.biteInfections, policy.municipalityCount),
+    householdCount: baseline.householdCount,
+    baselineHouseholdStates: baseline.householdStates,
+    policyHouseholdStates: policy.householdStates,
   }
 }

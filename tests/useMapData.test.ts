@@ -20,7 +20,7 @@ const mapBody = {
   features: [{ type: 'Feature', properties: { adm3_en: 'A' }, geometry: square }],
 }
 
-const populationBody = { barangays: [{ municipality: 'A', simPeople: 100 }] }
+const populationBody = { barangays: [{ municipality: 'A', simPeople: 100, households: 20 }] }
 
 function fakeFetch(mapStatus = 200, populationStatus = 200): typeof fetch {
   return (async (url: string) => {

@@ -25,9 +25,9 @@ const mapBody = {
 
 const populationBody = {
   barangays: [
-    { municipality: 'A', simPeople: 100 },
-    { municipality: 'B', simPeople: 50 },
-    { municipality: 'A', simPeople: 100 },
+    { municipality: 'A', simPeople: 100, households: 20 },
+    { municipality: 'B', simPeople: 50, households: 10 },
+    { municipality: 'A', simPeople: 100, households: 20 },
   ],
 }
 
