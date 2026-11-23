@@ -3,6 +3,7 @@ import { DEFAULT_CONTROLS } from './state/policyControls'
 import type { PolicyControls } from './state/policyControls'
 import { useRunController } from './state/useRunController'
 import ControlPanel from './ui/controls/ControlPanel.tsx'
+import ResultsPanel from './ui/run/ResultsPanel.tsx'
 import RunPanel from './ui/run/RunPanel.tsx'
 
 function App() {
@@ -22,6 +23,7 @@ function App() {
         onRun={() => start(controls)}
         onCancel={cancel}
       />
+      <ResultsPanel comparison={state.comparison} />
     </main>
   )
 }
