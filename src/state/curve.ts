@@ -1,9 +1,11 @@
 // Turns two finished runs (the policy and the "do nothing" baseline) into what the page shows:
-// weekly infection curves, totals, the percentage reduction, and weekly mosquitoes per person.
+// weekly infection curves, totals, the percentage reduction, weekly mosquitoes per person,
+// and bite infections per municipality.
 // Only infections from mosquito bites are counted: imports come from outside the study area,
 // so the policy cannot reach them.
 
 import type { RunResult } from '../engine/run'
+import { biteTotalsPerMunicipality } from './municipalities'
 
 export interface Comparison {
   baselineWeekly: number[] // infections per week, "do nothing"
@@ -16,6 +18,10 @@ export interface Comparison {
   policyAdultsPerPerson: number[]
   baselineImmaturesPerPerson: number[]
   policyImmaturesPerPerson: number[]
+  // Bite infections per municipality, added up over the whole run, in the same order as
+  // World.municipalities. Each list adds up to the total of its run.
+  baselineBitesByMunicipality: number[]
+  policyBitesByMunicipality: number[]
 }
 
 // People infected by mosquito bites each day.
@@ -70,6 +76,11 @@ export function compareRuns(baseline: RunResult, policy: RunResult): Comparison 
   if (baseline.days !== policy.days) {
     throw new Error(`the two runs have a different number of days (${baseline.days} and ${policy.days})`)
   }
+  if (baseline.municipalityCount !== policy.municipalityCount) {
+    throw new Error(
+      `the two runs have a different number of municipalities (${baseline.municipalityCount} and ${policy.municipalityCount})`,
+    )
+  }
   const baselineDaily = mosquitoInfections(baseline)
   const policyDaily = mosquitoInfections(policy)
   const baselineTotal = totalOf(baselineDaily)
@@ -86,5 +97,7 @@ export function compareRuns(baseline: RunResult, policy: RunResult): Comparison 
     policyAdultsPerPerson: perPersonWeekly(policy.adults, policyPeople),
     baselineImmaturesPerPerson: perPersonWeekly(baseline.immatures, baselinePeople),
     policyImmaturesPerPerson: perPersonWeekly(policy.immatures, policyPeople),
+    baselineBitesByMunicipality: biteTotalsPerMunicipality(baseline.biteInfections, baseline.municipalityCount),
+    policyBitesByMunicipality: biteTotalsPerMunicipality(policy.biteInfections, policy.municipalityCount),
   }
 }

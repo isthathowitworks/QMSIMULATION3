@@ -7,20 +7,24 @@ import { createRunController } from '../src/state/runController'
 import { RunCancelled } from '../src/worker/runClient'
 import type { RunClient, RunInput } from '../src/worker/runClient'
 
-// a small fake result: 14 days, `total` mosquito infections on day 0, no imports,
-// 10 people, `adults` adult mosquitoes and twice as many immatures every day
+// a small fake result: 14 days, 1 municipality, `total` mosquito infections on day 0 (all in
+// municipality 0), no imports, 10 people, `adults` adult mosquitoes and twice as many immatures every day
 function makeReply(total: number, adults = 70): DoneReply {
   const days = 14
   const newInfections = new Int32Array(days)
   newInfections[0] = total
+  const biteInfections = new Int32Array(days)
+  biteInfections[0] = total
   return {
     type: 'done',
     id: 1,
     seconds: 1,
     result: {
       days,
+      municipalityCount: 1,
       newInfections,
       imported: new Int32Array(days),
+      biteInfections,
       adults: new Int32Array(days).fill(adults),
       immatures: new Int32Array(days).fill(adults * 2),
       susceptible: new Int32Array(days).fill(10),
@@ -169,6 +173,17 @@ describe('createRunController', () => {
     expect(comparison?.policyAdultsPerPerson).toEqual([3, 3])
     expect(comparison?.baselineImmaturesPerPerson).toEqual([16, 16])
     expect(comparison?.policyImmaturesPerPerson).toEqual([6, 6])
+  })
+
+  it('also gives the bite infections per municipality for both runs', async () => {
+    const fake = fakeClient()
+    const c = createRunController(fake.client, loadOk, () => 1)
+    const started = c.start(DEFAULT_CONTROLS)
+    await finishRuns(fake, makeReply(10), makeReply(5))
+    await started
+    const comparison = c.getState().comparison
+    expect(comparison?.baselineBitesByMunicipality).toEqual([10])
+    expect(comparison?.policyBitesByMunicipality).toEqual([5])
   })
 
   it('reuses the baseline and the seed on the next start, so only the policy run is new', async () => {

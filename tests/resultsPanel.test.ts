@@ -14,6 +14,8 @@ const comparison: Comparison = {
   policyAdultsPerPerson: [5, 4, 3],
   baselineImmaturesPerPerson: [20, 30, 25],
   policyImmaturesPerPerson: [15, 10, 8],
+  baselineBitesByMunicipality: [6, 5, 3],
+  policyBitesByMunicipality: [3, 2, 1],
 }
 
 function render(value: Comparison | null): string {

@@ -15,14 +15,17 @@ interface Extra {
   adults?: number[] // mosquitoes, one number per day
   immatures?: number[]
   people?: number // simulated people, all susceptible
+  municipalities?: number // how many municipalities (default 1)
+  bites?: number[] // bite infections, flat: row = day, column = municipality
 }
 
 // a result with only the fields the comparison reads filled in
 function makeResult(newInfections: number[], imported?: number[], extra: Extra = {}): RunResult {
   const days = newInfections.length
+  const m = extra.municipalities ?? 1
   return {
     days,
-    municipalityCount: 1,
+    municipalityCount: m,
     adults: extra.adults ? Int32Array.from(extra.adults) : new Int32Array(days),
     immatures: extra.immatures ? Int32Array.from(extra.immatures) : new Int32Array(days),
     infectiousAdults: new Int32Array(days),
@@ -33,9 +36,10 @@ function makeResult(newInfections: number[], imported?: number[], extra: Extra =
     exposed: new Int32Array(days),
     infectious: new Int32Array(days),
     recovered: new Int32Array(days),
-    onsets: new Int32Array(days),
-    fogged: new Uint8Array(days),
-    foggingRounds: new Int32Array(1),
+    biteInfections: extra.bites ? Int32Array.from(extra.bites) : new Int32Array(days * m),
+    onsets: new Int32Array(days * m),
+    fogged: new Uint8Array(days * m),
+    foggingRounds: new Int32Array(m),
   }
 }
 
@@ -154,7 +158,24 @@ describe('compareRuns', () => {
     expect(c.policyImmaturesPerPerson).toEqual([5, 5])
   })
 
+  it('gives bite infections per municipality for both runs, adding up to the totals', () => {
+    // 2 days, 3 municipalities: day 0 = first three numbers, day 1 = last three
+    const baseline = makeResult([6, 15], undefined, { municipalities: 3, bites: [1, 2, 3, 4, 5, 6] })
+    const policy = makeResult([1, 3], undefined, { municipalities: 3, bites: [0, 1, 0, 1, 0, 2] })
+    const c = compareRuns(baseline, policy)
+    expect(c.baselineBitesByMunicipality).toEqual([5, 7, 9]) // 1+4, 2+5, 3+6
+    expect(c.policyBitesByMunicipality).toEqual([1, 1, 2]) // 0+1, 1+0, 0+2
+    expect(totalOf(c.baselineBitesByMunicipality)).toBe(c.baselineTotal) // 21
+    expect(totalOf(c.policyBitesByMunicipality)).toBe(c.policyTotal) // 4
+  })
+
   it('refuses two runs with a different number of days', () => {
     expect(() => compareRuns(makeResult([1, 2, 3]), makeResult([1, 2]))).toThrow(/different number of days/)
+  })
+
+  it('refuses two runs with a different number of municipalities', () => {
+    const two = makeResult([1, 2], undefined, { municipalities: 2 })
+    const three = makeResult([1, 2], undefined, { municipalities: 3 })
+    expect(() => compareRuns(two, three)).toThrow(/different number of municipalities/)
   })
 })
