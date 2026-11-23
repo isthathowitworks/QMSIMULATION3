@@ -1,0 +1,33 @@
+.headline {
+  margin: 24px auto;
+  padding: 16px;
+  max-width: 480px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.headline-number {
+  margin: 0;
+  font-size: 64px;
+  font-weight: 600;
+  line-height: 1.1;
+  color: var(--text-h);
+}
+
+.headline-sentence {
+  margin: 8px 0 0;
+  font-size: 18px;
+  color: var(--text);
+}
+
+.headline-fewer .headline-number {
+  color: var(--accent);
+}
+
+.headline-more .headline-number {
+  color: #e5484d;
+}
+
+.headline-unknown .headline-number {
+  font-size: 40px;
+}

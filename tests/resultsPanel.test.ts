@@ -34,4 +34,17 @@ describe('ResultsPanel', () => {
     expect(markup).toContain('chart-line-baseline')
     expect(markup).toContain('chart-line-policy')
   })
+
+  it('shows the headline number above the chart', () => {
+    const markup = render(comparison)
+    expect(markup).toContain('>57%<')
+    expect(markup).toContain('fewer infections than doing nothing')
+    expect(markup.indexOf('headline-number')).toBeLessThan(markup.indexOf('<svg'))
+  })
+
+  it('shows n/a instead of a number when there is nothing to compare with', () => {
+    const markup = render({ ...comparison, percentReduction: null })
+    expect(markup).toContain('>n/a<')
+    expect(markup).toContain('<svg')
+  })
 })
