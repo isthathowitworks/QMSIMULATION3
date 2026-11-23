@@ -1,0 +1,74 @@
+.chart {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 24px;
+}
+
+.chart-svg {
+  width: 100%;
+  height: auto;
+}
+
+.chart-grid {
+  stroke: var(--border);
+  stroke-width: 1;
+}
+
+.chart-text {
+  fill: var(--text);
+  font-size: 11px;
+}
+
+.chart-title {
+  fill: var(--text);
+  font-size: 12px;
+}
+
+.chart-line {
+  fill: none;
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+.chart-line-baseline {
+  stroke: var(--text);
+  stroke-dasharray: 6 4;
+  opacity: 0.7;
+}
+
+.chart-line-policy {
+  stroke: var(--accent);
+}
+
+.chart-legend {
+  display: flex;
+  gap: 20px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 14px;
+}
+
+.chart-legend li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chart-swatch {
+  display: inline-block;
+  width: 24px;
+  height: 0;
+  border-top: 2px solid var(--accent);
+}
+
+.chart-swatch-baseline {
+  border-top: 2px dashed var(--text);
+  opacity: 0.7;
+}
+
+.chart-note {
+  font-size: 14px;
+  margin: 0;
+}
