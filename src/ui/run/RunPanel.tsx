@@ -1,10 +1,11 @@
-import type { RunStatus } from '../../state/runController'
+import type { RunPhase, RunStatus } from '../../state/runController'
 import './RunPanel.css'
 
 export type { RunStatus }
 
 interface Props {
   status: RunStatus
+  phase?: RunPhase | null // which of the two runs is going while status is running
   daysDone: number
   totalDays: number
   message?: string
@@ -12,8 +13,14 @@ interface Props {
   onCancel: () => void
 }
 
+const PHASE_TEXT: Record<RunPhase, string> = {
+  baseline: 'Running the do-nothing baseline (no cleaning, no fogging)',
+  policy: 'Running your policy',
+}
+
 export default function RunPanel({
   status,
+  phase,
   daysDone,
   totalDays,
   message,
@@ -32,6 +39,8 @@ export default function RunPanel({
           Cancel
         </button>
       </div>
+
+      {running && phase && <p className="run-note">{PHASE_TEXT[phase]}</p>}
 
       {running && (
         <div className="run-progress">

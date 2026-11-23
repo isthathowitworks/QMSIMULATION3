@@ -1,10 +1,14 @@
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
+import type { RunPhase } from '../src/state/runController'
 import RunPanel from '../src/ui/run/RunPanel'
 import type { RunStatus } from '../src/ui/run/RunPanel'
 
-function render(status: RunStatus, extra: { daysDone?: number; totalDays?: number; message?: string } = {}): string {
+function render(
+  status: RunStatus,
+  extra: { daysDone?: number; totalDays?: number; message?: string; phase?: RunPhase | null } = {},
+): string {
   return renderToStaticMarkup(
     createElement(RunPanel, {
       status,
@@ -41,11 +45,35 @@ describe('RunPanel', () => {
     expect(markup).toContain('Day 300 of 2000')
   })
 
+  it('running the baseline: says that the do-nothing baseline is running', () => {
+    const markup = render('running', { phase: 'baseline', daysDone: 30, totalDays: 2000 })
+    expect(markup).toContain('Running the do-nothing baseline')
+    expect(markup).not.toContain('Running your policy')
+  })
+
+  it('running the policy: says that the policy is running', () => {
+    const markup = render('running', { phase: 'policy', daysDone: 30, totalDays: 2000 })
+    expect(markup).toContain('Running your policy')
+    expect(markup).not.toContain('do-nothing baseline')
+  })
+
+  it('running with no phase yet: shows no phase text, only the progress bar', () => {
+    const markup = render('running', { phase: null })
+    expect(markup).not.toContain('Running the do-nothing baseline')
+    expect(markup).not.toContain('Running your policy')
+    expect(markup).toContain('<progress')
+  })
+
   it('done: shows that the run finished and both buttons are back to idle', () => {
     const markup = render('done')
     expect(markup).toContain('Run finished.')
     expect(buttonTag(markup, 'run-button')).not.toContain('disabled')
     expect(buttonTag(markup, 'cancel-button')).toContain('disabled')
+  })
+
+  it('a phase is not shown when no run is going', () => {
+    const markup = render('done', { phase: 'policy' })
+    expect(markup).not.toContain('Running your policy')
   })
 
   it('cancelled: shows that the run was cancelled', () => {

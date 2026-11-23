@@ -15,6 +15,7 @@ function App() {
       <ControlPanel controls={controls} onChange={setControls} />
       <RunPanel
         status={state.status}
+        phase={state.phase}
         daysDone={state.daysDone}
         totalDays={state.totalDays}
         message={state.message}
