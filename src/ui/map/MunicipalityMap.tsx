@@ -1,5 +1,5 @@
 // Draws one map of the 12 municipalities as a plain SVG, colored by one value per municipality
-// (bite infections per 1,000 simulated people), with a legend bar under it.
+// (bite infections per 1,000 simulated people, summed over the whole run), with a legend bar under it.
 // It only draws what it is given. `names` and `values` are in the same order, and `max` is the top of the
 // color scale, shared by every map on the page so the same color means the same number.
 
@@ -62,7 +62,7 @@ export default function MunicipalityMap({ map, names, values, max, title, svgLab
           <span>0</span>
           <span>{numberLabel(max)}</span>
         </div>
-        <p className="map-legend-title">Bite infections per 1,000 people</p>
+        <p className="map-legend-title">Bite infections per 1,000 people over the whole run</p>
       </div>
     </section>
   )

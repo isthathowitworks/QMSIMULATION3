@@ -1,0 +1,6 @@
+.map-pair {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 16px 0;
+}

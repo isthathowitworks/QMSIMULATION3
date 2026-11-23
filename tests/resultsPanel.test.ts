@@ -2,6 +2,9 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 import type { Comparison } from '../src/state/curve'
+import type { MapData } from '../src/state/loadMap'
+import type { PopulationData } from '../src/state/municipalities'
+import type { MapDataState } from '../src/state/useMapData'
 import ResultsPanel from '../src/ui/run/ResultsPanel'
 
 const comparison: Comparison = {
@@ -18,8 +21,46 @@ const comparison: Comparison = {
   policyBitesByMunicipality: [3, 2, 1],
 }
 
-function render(value: Comparison | null): string {
-  return renderToStaticMarkup(createElement(ResultsPanel, { comparison: value }))
+// A small fake map with three municipalities that fits the three bite numbers above.
+function triangle(name: string, shift: number) {
+  return {
+    type: 'Feature',
+    properties: { adm3_en: name },
+    geometry: {
+      type: 'Polygon',
+      coordinates: [
+        [
+          [shift, 0],
+          [shift + 1, 0],
+          [shift + 1, 1],
+          [shift, 0],
+        ],
+      ],
+    },
+  }
+}
+
+const fakeMap = {
+  type: 'FeatureCollection',
+  features: [triangle('X', 0), triangle('Y', 2), triangle('Z', 4)],
+} as unknown as MapData
+
+// 100 simulated people in each of the three municipalities
+function fakePopulation(names: string[]): PopulationData {
+  return { barangays: names.map((municipality) => ({ municipality, simPeople: 100 })) } as unknown as PopulationData
+}
+
+const ready: MapDataState = {
+  status: 'ready',
+  files: { map: fakeMap, population: fakePopulation(['X', 'Y', 'Z']) },
+}
+
+function render(value: Comparison | null, mapState: MapDataState = ready): string {
+  return renderToStaticMarkup(createElement(ResultsPanel, { comparison: value, mapState }))
+}
+
+function count(markup: string, piece: string): number {
+  return markup.split(piece).length - 1
 }
 
 describe('ResultsPanel', () => {
@@ -81,5 +122,53 @@ describe('ResultsPanel', () => {
 
   it('does not show the always-visible note (that one is on the page itself)', () => {
     expect(render(comparison)).not.toContain('results-note-always')
+  })
+})
+
+describe('ResultsPanel maps', () => {
+  it('shows the two maps between the infection chart and the mosquito charts', () => {
+    const markup = render(comparison)
+    expect(count(markup, 'map-card')).toBe(2)
+    expect(markup).toContain('>Do nothing</h3>')
+    expect(markup).toContain('>Your policy</h3>')
+    const infections = markup.indexOf('aria-label="Infection curve"')
+    const maps = markup.indexOf('aria-label="Maps of the municipalities"')
+    const adults = markup.indexOf('aria-label="Adult mosquitoes"')
+    expect(maps).toBeGreaterThan(infections)
+    expect(maps).toBeLessThan(adults)
+  })
+
+  it('colors both maps on one scale, from bite infections per 1,000 simulated people', () => {
+    // 6, 5, 3 bites in 100 simulated people each: 60, 50 and 30 per 1,000; the top of the scale is 60
+    const markup = render(comparison)
+    expect(count(markup, '>60</span>')).toBe(2)
+    expect(count(markup, 'fill="#7f2704"')).toBe(1)
+  })
+
+  it('shows a loading note in the map spot and keeps the charts and the headline number', () => {
+    const markup = render(comparison, { status: 'loading' })
+    expect(markup).toContain('Loading the map.')
+    expect(count(markup, 'map-card')).toBe(0)
+    expect(markup).toContain('>57%<')
+    expect(markup.match(/<polyline/g)).toHaveLength(6)
+  })
+
+  it('shows why the map failed and keeps the charts and the headline number', () => {
+    const markup = render(comparison, { status: 'failed', message: 'status 404' })
+    expect(markup).toContain('The map could not be loaded (status 404)')
+    expect(count(markup, 'map-card')).toBe(0)
+    expect(markup).toContain('>57%<')
+    expect(markup.match(/<polyline/g)).toHaveLength(6)
+  })
+
+  it('shows a note and no map when the run does not fit the population file', () => {
+    const twoOnly: MapDataState = {
+      status: 'ready',
+      files: { map: fakeMap, population: fakePopulation(['X', 'Y']) },
+    }
+    const markup = render(comparison, twoOnly)
+    expect(markup).toContain('does not match the number of municipalities')
+    expect(count(markup, 'map-card')).toBe(0)
+    expect(markup.match(/<polyline/g)).toHaveLength(6)
   })
 })

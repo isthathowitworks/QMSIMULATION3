@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { DEFAULT_CONTROLS } from './state/policyControls'
 import type { PolicyControls } from './state/policyControls'
+import { useMapData } from './state/useMapData'
 import { useRunController } from './state/useRunController'
 import ControlPanel from './ui/controls/ControlPanel.tsx'
 import ResultsNote from './ui/run/ResultsNote.tsx'
@@ -10,6 +11,7 @@ import RunPanel from './ui/run/RunPanel.tsx'
 function App() {
   const [controls, setControls] = useState<PolicyControls>(DEFAULT_CONTROLS)
   const { state, start, cancel } = useRunController(import.meta.env.BASE_URL)
+  const mapState = useMapData(import.meta.env.BASE_URL)
 
   return (
     <main className="app">
@@ -25,7 +27,7 @@ function App() {
         onRun={() => start(controls)}
         onCancel={cancel}
       />
-      <ResultsPanel comparison={state.comparison} />
+      <ResultsPanel comparison={state.comparison} mapState={mapState} />
     </main>
   )
 }

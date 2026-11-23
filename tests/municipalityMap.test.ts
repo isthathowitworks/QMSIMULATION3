@@ -56,7 +56,11 @@ describe('MunicipalityMap', () => {
     const markup = render(names.map(() => 1), 12.3456)
     expect(markup).toContain('>0</span>')
     expect(markup).toContain('>12.3</span>')
-    expect(markup).toContain('Bite infections per 1,000 people')
+  })
+
+  it('says in the legend that the numbers cover the whole run', () => {
+    const markup = render(names.map(() => 1), 1)
+    expect(markup).toContain('>Bite infections per 1,000 people over the whole run</p>')
   })
 
   it('shows a note and no map when there is nothing to draw', () => {
