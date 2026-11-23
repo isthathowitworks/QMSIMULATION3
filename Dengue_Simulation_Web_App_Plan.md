@@ -127,10 +127,15 @@ QMSIMULATION3/                   <- project root (no extra folder)
         ControlPanel.tsx         <- M5 5.1: preset buttons, cleaning interval, compliance (hint above 50%), fogging on/off and trigger, number of runs
         ControlPanel.css         <- M5 5.1: page width and control styles
       views/ map/ charts/
+      run/
+        RunPanel.tsx             <- M5 5.2b-2: Run and Cancel buttons, progress bar with the day, notes for finished, cancelled and failed runs
+        RunPanel.css             <- M5 5.2b-2: run panel styles
     state/
       policyControls.ts          <- M5 5.1: the main controls as one object, starting position, six cleaning presets, clamping to the allowed ranges
       runInput.ts                <- M5 5.2b-1: turns the control values into one run request (compliance slider replaces the base compliance; interval, fogging on/off and trigger passed on; "runs" not used yet)
       loadParams.ts              <- M5 5.2b-1: loads public/data/settings.json in the page and lays it over the starting positions (the worker takes its settings from each run request)
+      runController.ts           <- M5 5.2b-2: holds the state of one run (idle, running, done, cancelled, error), loads the settings once, builds the request, calls the run client; no React (also defines RunStatus)
+      useRunController.ts        <- M5 5.2b-2: React hook that gives the page one run controller and starts the real worker only when a run starts
   tests/
     tsconfig.json                <- settings for the tests only
     policyControls.test.ts       <- M5 5.1: starting position, six presets, a preset changes interval and compliance only, clamping, rounding, matching preset (7 tests)
@@ -138,6 +143,9 @@ QMSIMULATION3/                   <- project root (no extra folder)
     runClient.test.ts            <- M5 5.2a: request gets a type and a numbered id, progress passed on, error reply rejects, ignores replies of another run, second run refused while busy, same worker reused, cancel rejects and next run uses a fresh worker, a broken worker rejects, a late failure of a cancelled worker is ignored (10 tests)
     runInput.test.ts             <- M5 5.2b-1: policy controls passed on, compliance replaces the base, no cleaning is interval 0, the base settings are not changed (4 tests)
     loadParams.test.ts           <- M5 5.2b-1: asks for data/settings.json under the base url, lays the four fitted settings over the starting positions, error with the status when the file cannot be loaded, error when a setting is missing or not a number (4 tests)
+    runPanel.test.ts             <- M5 5.2b-2: Run enabled and Cancel disabled when idle, Run disabled and Cancel enabled with the progress bar when running, finished, cancelled and error notes (5 tests)
+    runController.test.ts        <- M5 5.2b-2: idle start, done with result, request built from controls and seed, progress, error, settings load failure and retry, settings loaded once, second start ignored, cancel (also while loading), listeners (12 tests)
+    useRunController.test.ts     <- M5 5.2b-2: the hook starts idle with no result and starts no worker on load (1 test)
     data.test.ts                 <- checks the files in public/data (settings.json must be marked fitted, with a note and values inside the ranges the fit searched)
     rng.test.ts                  <- same seed gives same numbers; values stay in range
     population.test.ts           <- 18,986 people, 3,797 households, everyone starts susceptible
@@ -421,7 +429,7 @@ The build goes in order. Each milestone is reached only when its "reached when" 
 
 ### M5: First usable app
 - **5.1 Controls.** Cleaning interval, compliance, fogging on/off and trigger, number of runs.  *Done:* `src/state/policyControls.ts` (starting position: every 7 days, 50% compliance, fogging on at 1 case, 1 run; maximum 10 runs; six cleaning presets; a preset changes interval and compliance only; interval 0 means no cleaning) and the control panel in `src/ui/controls/ControlPanel.tsx`, shown by `App.tsx`. Compliance above 50% shows a "hypothetical value" hint. The controls do not run anything yet (5.2). 7 + 7 new tests; full npm test: 357 passed, 3 skipped; lint 0 errors; build passes.
-- **5.2 Worker connection.** Send the policy to the worker, show a progress bar, allow cancel. *Split into four steps.* **5.2a (done, 10 tests pass):** `src/worker/runClient.ts` with `tests/runClient.test.ts`, plain TypeScript with no buttons yet. **5.2b-1 (done, 8 tests pass):** `src/state/runInput.ts`, `src/state/loadParams.ts` and `src/worker/workerFactory.ts` (the real worker factory), still no buttons. **5.2b-2:** the Run button, progress bar and Cancel button in the page. **5.2c:** a first real run in the browser (progress bar moves, page stays responsive, Cancel works).
+- **5.2 Worker connection.** Send the policy to the worker, show a progress bar, allow cancel. *Split into four steps.* **5.2a (done, 10 tests pass):** `src/worker/runClient.ts` with `tests/runClient.test.ts`, plain TypeScript with no buttons yet. **5.2b-1 (done, 8 tests pass):** `src/state/runInput.ts`, `src/state/loadParams.ts` and `src/worker/workerFactory.ts` (the real worker factory), still no buttons. **5.2b-2 (done, 18 tests pass):** the Run button, progress bar and Cancel button in the page: `src/ui/run/RunPanel.tsx` and `RunPanel.css` (show the state they are given), `src/state/runController.ts` (holds the run state: idle, running, done, cancelled, error; loads the settings once; ignores a late result after Cancel), `src/state/useRunController.ts` (React hook that starts the real worker only when a run starts) and the new `src/App.tsx`. **5.2c:** a first real run in the browser (progress bar moves, page stays responsive, Cancel works).
 - **5.3 Infection curve.** Chosen policy vs. no cleaning.
 - **5.4 Headline number.** Percentage reduction in infections, big and clear.
 - **5.5 Mosquito counts.** Adults and immatures per person over time.

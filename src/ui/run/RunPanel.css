@@ -1,0 +1,56 @@
+.run {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.run-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.run-button,
+.cancel-button {
+  font: inherit;
+  padding: 8px 20px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-h);
+  cursor: pointer;
+}
+
+.run-button {
+  background: var(--accent-bg);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.run-button:disabled,
+.cancel-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.run-button:focus-visible,
+.cancel-button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.run-progress {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.run-progress progress {
+  flex: 1;
+  accent-color: var(--accent);
+}
+
+.run-note {
+  font-size: 14px;
+  margin: 0;
+}
