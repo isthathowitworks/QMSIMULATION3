@@ -7,7 +7,21 @@ import { createRunController } from '../src/state/runController'
 import { RunCancelled } from '../src/worker/runClient'
 import type { RunClient, RunInput } from '../src/worker/runClient'
 
-const reply = { type: 'done', id: 1, seconds: 1, result: {} } as unknown as DoneReply
+// a small fake result: 14 days, `total` mosquito infections on day 0, no imports
+function makeReply(total: number): DoneReply {
+  const days = 14
+  const newInfections = new Int32Array(days)
+  newInfections[0] = total
+  return {
+    type: 'done',
+    id: 1,
+    seconds: 1,
+    result: { days, newInfections, imported: new Int32Array(days) },
+  } as unknown as DoneReply
+}
+
+const baselineReply = makeReply(10)
+const reply = makeReply(5)
 
 // lets the controller get past its awaits
 const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 0))
@@ -43,6 +57,16 @@ function fakeClient() {
   }
 }
 
+type Fake = ReturnType<typeof fakeClient>
+
+// finishes the engine runs one after another (the baseline first, then the policy run)
+async function finishRuns(fake: Fake, ...replies: DoneReply[]) {
+  for (const r of replies) {
+    await flush()
+    fake.finish(r)
+  }
+}
+
 const loadOk = () => Promise.resolve<Params>(DEFAULT_PARAMS)
 
 describe('createRunController', () => {
@@ -50,32 +74,95 @@ describe('createRunController', () => {
     const c = createRunController(fakeClient().client, loadOk, () => 1)
     expect(c.getState().status).toBe('idle')
     expect(c.getState().result).toBeNull()
+    expect(c.getState().comparison).toBeNull()
+    expect(c.getState().phase).toBeNull()
   })
 
-  it('runs: running, then done with the result', async () => {
+  it('runs: running, then done with the policy result', async () => {
     const fake = fakeClient()
     const c = createRunController(fake.client, loadOk, () => 1)
     const started = c.start(DEFAULT_CONTROLS)
     expect(c.getState().status).toBe('running')
-    await flush()
-    fake.finish(reply)
+    await finishRuns(fake, baselineReply, reply)
     await started
     expect(c.getState().status).toBe('done')
     expect(c.getState().result).toBe(reply)
+    expect(c.getState().phase).toBeNull()
   })
 
-  it('builds the request from the controls, the loaded settings and the seed', async () => {
+  it('runs the baseline first, then the policy run, and says which phase is going', async () => {
+    const fake = fakeClient()
+    const c = createRunController(fake.client, loadOk, () => 1)
+    const started = c.start(DEFAULT_CONTROLS)
+    await flush()
+    expect(c.getState().phase).toBe('baseline')
+    fake.finish(baselineReply)
+    await flush()
+    expect(c.getState().phase).toBe('policy')
+    fake.finish(reply)
+    await started
+    expect(fake.inputs).toHaveLength(2)
+  })
+
+  it('the baseline has no cleaning and no fogging, and shares the seed with the policy run', async () => {
+    const fake = fakeClient()
+    const c = createRunController(fake.client, loadOk, () => 42)
+    const started = c.start({ ...DEFAULT_CONTROLS, cleaningInterval: 3, foggingOn: true })
+    await finishRuns(fake, baselineReply, reply)
+    await started
+    const [baselineInput, policyInput] = fake.inputs
+    expect(baselineInput.cleaningIntervalDays).toBe(0)
+    expect(baselineInput.foggingOn).toBe(false)
+    expect(baselineInput.seed).toBe(42)
+    expect(policyInput.cleaningIntervalDays).toBe(3)
+    expect(policyInput.foggingOn).toBe(true)
+    expect(policyInput.seed).toBe(42)
+  })
+
+  it('builds the policy request from the controls, the loaded settings and the seed', async () => {
     const fake = fakeClient()
     const c = createRunController(fake.client, loadOk, () => 42)
     void c.start({ ...DEFAULT_CONTROLS, cleaningInterval: 3, compliance: 0.75, foggingOn: false, foggingTrigger: 5 })
+    await finishRuns(fake, baselineReply)
     await flush()
-    expect(fake.inputs).toHaveLength(1)
-    const input = fake.inputs[0]
+    expect(fake.inputs).toHaveLength(2)
+    const input = fake.inputs[1]
     expect(input.seed).toBe(42)
     expect(input.cleaningIntervalDays).toBe(3)
     expect(input.foggingOn).toBe(false)
     expect(input.foggingTrigger).toBe(5)
     expect(input.params.compliance).toBe(0.75)
+  })
+
+  it('compares the policy run with the baseline', async () => {
+    const fake = fakeClient()
+    const c = createRunController(fake.client, loadOk, () => 1)
+    const started = c.start(DEFAULT_CONTROLS)
+    await finishRuns(fake, baselineReply, reply)
+    await started
+    const comparison = c.getState().comparison
+    expect(comparison).not.toBeNull()
+    expect(comparison?.baselineTotal).toBe(10)
+    expect(comparison?.policyTotal).toBe(5)
+    expect(comparison?.percentReduction).toBe(50)
+  })
+
+  it('reuses the baseline and the seed on the next start, so only the policy run is new', async () => {
+    const fake = fakeClient()
+    let seeds = 0
+    const c = createRunController(fake.client, loadOk, () => ++seeds)
+    const first = c.start(DEFAULT_CONTROLS)
+    await finishRuns(fake, baselineReply, reply)
+    await first
+    const second = c.start({ ...DEFAULT_CONTROLS, cleaningInterval: 3 })
+    await finishRuns(fake, makeReply(2))
+    await second
+    expect(fake.inputs).toHaveLength(3)
+    expect(fake.inputs[2].cleaningIntervalDays).toBe(3)
+    expect(fake.inputs[2].seed).toBe(1)
+    expect(seeds).toBe(1)
+    expect(c.getState().status).toBe('done')
+    expect(c.getState().comparison?.percentReduction).toBe(80)
   })
 
   it('passes progress into the state', async () => {
@@ -100,6 +187,21 @@ describe('createRunController', () => {
     expect(c.getState().message).toBe('boom')
   })
 
+  it('a failed baseline is not kept, so the next start runs the baseline again', async () => {
+    const fake = fakeClient()
+    const c = createRunController(fake.client, loadOk, () => 1)
+    const first = c.start(DEFAULT_CONTROLS)
+    await flush()
+    fake.fail('boom')
+    await first
+    const second = c.start(DEFAULT_CONTROLS)
+    await finishRuns(fake, baselineReply, reply)
+    await second
+    expect(fake.inputs).toHaveLength(3)
+    expect(fake.inputs[1].cleaningIntervalDays).toBe(0)
+    expect(c.getState().status).toBe('done')
+  })
+
   it('a settings load failure gives status error, and the next start tries again', async () => {
     const fake = fakeClient()
     let calls = 0
@@ -112,8 +214,7 @@ describe('createRunController', () => {
     expect(c.getState().status).toBe('error')
     expect(c.getState().message).toBe('no settings')
     const second = c.start(DEFAULT_CONTROLS)
-    await flush()
-    fake.finish(reply)
+    await finishRuns(fake, baselineReply, reply)
     await second
     expect(c.getState().status).toBe('done')
     expect(calls).toBe(2)
@@ -128,12 +229,10 @@ describe('createRunController', () => {
     }
     const c = createRunController(fake.client, load, () => 1)
     const first = c.start(DEFAULT_CONTROLS)
-    await flush()
-    fake.finish(reply)
+    await finishRuns(fake, baselineReply, reply)
     await first
     const second = c.start(DEFAULT_CONTROLS)
-    await flush()
-    fake.finish(reply)
+    await finishRuns(fake, reply)
     await second
     expect(calls).toBe(1)
   })
@@ -155,11 +254,41 @@ describe('createRunController', () => {
     c.cancel()
     await started
     expect(c.getState().status).toBe('cancelled')
+    expect(c.getState().phase).toBeNull()
     expect(fake.cancels()).toBe(1)
     fake.finish(reply)
     await flush()
     expect(c.getState().status).toBe('cancelled')
     expect(c.getState().result).toBeNull()
+    expect(c.getState().comparison).toBeNull()
+  })
+
+  it('cancel during the baseline starts no policy run', async () => {
+    const fake = fakeClient()
+    const c = createRunController(fake.client, loadOk, () => 1)
+    const started = c.start(DEFAULT_CONTROLS)
+    await flush()
+    c.cancel()
+    await started
+    await flush()
+    expect(fake.inputs).toHaveLength(1)
+  })
+
+  it('cancel during the policy run keeps the baseline for the next start', async () => {
+    const fake = fakeClient()
+    const c = createRunController(fake.client, loadOk, () => 1)
+    const first = c.start(DEFAULT_CONTROLS)
+    await finishRuns(fake, baselineReply)
+    await flush()
+    c.cancel()
+    await first
+    expect(c.getState().status).toBe('cancelled')
+    const second = c.start(DEFAULT_CONTROLS)
+    await finishRuns(fake, reply)
+    await second
+    expect(fake.inputs).toHaveLength(3)
+    expect(c.getState().status).toBe('done')
+    expect(c.getState().comparison?.percentReduction).toBe(50)
   })
 
   it('cancel while the settings are still loading starts no run', async () => {
