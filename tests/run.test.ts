@@ -86,6 +86,7 @@ describe('runSimulation', () => {
       expect(a.length).toBe(DAYS)
     }
     expect(r.onsets.length).toBe(DAYS * M)
+    expect(r.biteInfections.length).toBe(DAYS * M)
     expect(r.fogged.length).toBe(DAYS * M)
     expect(r.foggingRounds.length).toBe(M)
   })
@@ -122,6 +123,7 @@ describe('runSimulation', () => {
       expect(r.susceptible[d]).toBe(PEOPLE)
     }
     for (const v of r.onsets) expect(v).toBe(0)
+    for (const v of r.biteInfections) expect(v).toBe(0)
     for (const v of r.infectiousAdults) expect(v).toBe(0)
   })
 
@@ -138,10 +140,22 @@ describe('runSimulation', () => {
     expect(onsets).toBeGreaterThan(0)
   })
 
+  it('bite infections per municipality add up to new infections minus imports, every day', () => {
+    const r = go(LOTS_OF_IMPORTS)
+    let bites = 0
+    for (let d = 0; d < DAYS; d++) {
+      let sum = 0
+      for (let k = 0; k < M; k++) sum += r.biteInfections[d * M + k]
+      expect(sum).toBe(r.newInfections[d] - r.imported[d])
+      bites += sum
+    }
+    expect(bites).toBeGreaterThan(0)
+  })
+
   it('records only whole, non-negative numbers', () => {
     const r = go(LOTS_OF_IMPORTS)
     for (const a of [r.adults, r.immatures, r.infectiousAdults, r.cleanings, r.newInfections, r.imported,
-      r.onsets, r.foggingRounds]) {
+      r.onsets, r.biteInfections, r.foggingRounds]) {
       for (const v of a) {
         expect(Number.isInteger(v)).toBe(true)
         expect(v).toBeGreaterThanOrEqual(0)

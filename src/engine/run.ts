@@ -38,6 +38,7 @@ export interface RunResult {
   exposed: Int32Array
   infectious: Int32Array
   recovered: Int32Array
+  biteInfections: Int32Array // per municipality: people infected by mosquito bites that day (imports left out)
   onsets: Int32Array // per municipality: people who became infectious that day (cases)
   fogged: Uint8Array // per municipality: 1 if a fogging round happened that day
   foggingRounds: Int32Array // per municipality: total rounds over the whole run
@@ -91,6 +92,7 @@ export function runSimulation(
   const newE = new Uint8Array(people)
   const pInfect = new Float64Array(households)
   const dayOnsets = new Int32Array(M)
+  const dayBites = new Int32Array(M)
   const stateCount = new Int32Array(4) // people per state, indexed by state number
 
   // the record
@@ -107,6 +109,7 @@ export function runSimulation(
     exposed: new Int32Array(days),
     infectious: new Int32Array(days),
     recovered: new Int32Array(days),
+    biteInfections: new Int32Array(days * M),
     onsets: new Int32Array(days * M),
     fogged: new Uint8Array(days * M),
     foggingRounds: new Int32Array(M),
@@ -135,6 +138,14 @@ export function runSimulation(
     // 4c mosquitoes catch the virus, 4d people catch it, then imports
     mosquitoInfection(m, infectiousPresent, present, tempC, params, rng)
     infectPeople(w, loc, present, m.Im, params, rng, newE, pInfect)
+
+    // bite infections per municipality: counted here, before imports are added to newE
+    dayBites.fill(0)
+    for (let p = 0; p < people; p++) {
+      if (newE[p]) dayBites[w.householdMunicipality[w.personHousehold[p]]] += 1
+    }
+    result.biteInfections.set(dayBites, day * M)
+
     result.imported[day] = importInfections(w, newE, day, params, rng)
 
     // 4e egg laying

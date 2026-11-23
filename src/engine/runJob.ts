@@ -71,7 +71,7 @@ export function transferables(r: RunResult): ArrayBuffer[] {
   const arrays = [
     r.adults, r.immatures, r.infectiousAdults, r.cleanings, r.newInfections, r.imported,
     r.susceptible, r.exposed, r.infectious, r.recovered,
-    r.onsets, r.fogged, r.foggingRounds,
+    r.biteInfections, r.onsets, r.fogged, r.foggingRounds,
   ]
   return arrays.map((a) => a.buffer as ArrayBuffer)
 }
