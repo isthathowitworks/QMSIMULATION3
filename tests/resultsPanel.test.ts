@@ -32,14 +32,14 @@ describe('ResultsPanel', () => {
     expect(markup).toContain('<svg')
   })
 
-  it('draws both weekly curves, the baseline and the policy', () => {
+  it('draws a baseline and a policy curve in each of the three charts', () => {
     const markup = render(comparison)
-    expect(markup.match(/<polyline/g)).toHaveLength(2)
-    expect(markup).toContain('chart-line-baseline')
-    expect(markup).toContain('chart-line-policy')
+    expect(markup.match(/<polyline/g)).toHaveLength(6)
+    expect(markup.match(/chart-line-baseline/g)).toHaveLength(3)
+    expect(markup.match(/chart-line-policy/g)).toHaveLength(3)
   })
 
-  it('shows the headline number above the chart', () => {
+  it('shows the headline number above the charts', () => {
     const markup = render(comparison)
     expect(markup).toContain('>57%<')
     expect(markup).toContain('fewer infections than doing nothing')
@@ -50,5 +50,23 @@ describe('ResultsPanel', () => {
     const markup = render({ ...comparison, percentReduction: null })
     expect(markup).toContain('>n/a<')
     expect(markup).toContain('<svg')
+  })
+
+  it('shows the adult and immature mosquito charts after the infection chart', () => {
+    const markup = render(comparison)
+    const infections = markup.indexOf('aria-label="Infection curve"')
+    const adults = markup.indexOf('aria-label="Adult mosquitoes"')
+    const immatures = markup.indexOf('aria-label="Immature mosquitoes"')
+    expect(infections).toBeGreaterThan(-1)
+    expect(adults).toBeGreaterThan(infections)
+    expect(immatures).toBeGreaterThan(adults)
+  })
+
+  it('gives each mosquito chart its own numbers', () => {
+    const markup = render(comparison)
+    // the immature chart peaks at 30, so its axis top is 40; no other chart gets that high
+    expect(markup).toContain('>40</text>')
+    expect(markup).toContain('>Adult mosquitoes per person</text>')
+    expect(markup).toContain('>Immature mosquitoes per person</text>')
   })
 })
