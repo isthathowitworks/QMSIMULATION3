@@ -116,8 +116,8 @@ QMSIMULATION3/                   <- project root (no extra folder)
       humans.ts                  <- people side of infection: mosquitoes infect people, E -> I -> R, yearly return of immunity, seeding
       imports.ts                 <- imported infections: background rate plus the 2019 surge (weeks 30-44), on/off
       movement.ts                <- where everybody spends the day: away trips, travel by population and distance
-      run.ts                     <- the full run: warm-up, then every day with cleaning, fogging, movement, infection, imports and humans; records adults, immatures, infections, onsets per municipality, S/E/I/R totals and fogging rounds
-      runJob.ts                  <- one run request, same code in the worker and in tests: checks the request, sets cleaning interval, fogging on/off and trigger, runs, sends progress messages, hands the 13 result arrays over
+      run.ts                     <- the full run: warm-up, then every day with cleaning, fogging, movement, infection, imports and humans; records adults, immatures, infections, bite infections per municipality, onsets per municipality, S/E/I/R totals and fogging rounds
+      runJob.ts                  <- one run request, same code in the worker and in tests: checks the request, sets cleaning interval, fogging on/off and trigger, runs, sends progress messages, hands the 14 result arrays over
     worker/
       sim.worker.ts              <- thin shell: loads the three data files once with fetch, receives run messages, calls runJob and posts the replies (checked by tsc and lint; first real run comes in M5)
       runClient.ts               <- M5 5.2a: talks to the worker for the page: numbers each run, passes on progress, resolves with the result, rejects on an error, Cancel stops the worker and the next run starts a fresh one; takes a worker factory so tests can use a fake worker (no browser code)
@@ -207,7 +207,7 @@ QMSIMULATION3/                   <- project root (no extra folder)
     compareReal.test.ts          <- M4 4.4: yearly comparison by hand (totals, peak weeks, ties, a year with no real records is a gap, no peak week for a year with no cases, length mismatch throws) and sum over a range of weeks
     fitRunTrial.test.ts          <- temporary: M4 4.2b: one trial on the real data run twice, same seed gives the same result, prints total cases and fogging rounds; only runs when TIMING is set (about 90 s)
     runRecording.test.ts         <- recorded adult mosquitoes: never rise in cold weather, infectious never exceed all adults, states add up
-    runJob.test.ts               <- progress then one done message, the 13 result arrays handed over (immatures included), same request same result, interval 0 means no cleaning, fogging on/off and trigger, bad requests and a missing municipality give an error message
+    runJob.test.ts               <- progress then one done message, the 14 result arrays handed over (immatures and bite infections included), same request same result, interval 0 means no cleaning, fogging on/off and trigger, bad requests and a missing municipality give an error message
     runFullTiming.test.ts        <- temporary: times one full run on the real data (2019-2025), prints time and cases per year; only runs when TIMING is set
     runPhases.test.ts            <- temporary: times each step of the day separately; only runs when TIMING is set
   docs/
