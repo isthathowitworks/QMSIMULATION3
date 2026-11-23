@@ -121,6 +121,7 @@ QMSIMULATION3/                   <- project root (no extra folder)
     worker/
       sim.worker.ts              <- thin shell: loads the three data files once with fetch, receives run messages, calls runJob and posts the replies (checked by tsc and lint; first real run comes in M5)
       runClient.ts               <- M5 5.2a: talks to the worker for the page: numbers each run, passes on progress, resolves with the result, rejects on an error, Cancel stops the worker and the next run starts a fresh one; takes a worker factory so tests can use a fake worker (no browser code)
+      workerFactory.ts           <- M5 5.2b-1: creates the real Web Worker from sim.worker.ts for the run client (browser code: not tested by Vitest, checked by tsc, used for real in 5.2b-2 and tested in 5.2c)
     ui/
       controls/
         ControlPanel.tsx         <- M5 5.1: preset buttons, cleaning interval, compliance (hint above 50%), fogging on/off and trigger, number of runs
@@ -128,11 +129,15 @@ QMSIMULATION3/                   <- project root (no extra folder)
       views/ map/ charts/
     state/
       policyControls.ts          <- M5 5.1: the main controls as one object, starting position, six cleaning presets, clamping to the allowed ranges
+      runInput.ts                <- M5 5.2b-1: turns the control values into one run request (compliance slider replaces the base compliance; interval, fogging on/off and trigger passed on; "runs" not used yet)
+      loadParams.ts              <- M5 5.2b-1: loads public/data/settings.json in the page and lays it over the starting positions (the worker takes its settings from each run request)
   tests/
     tsconfig.json                <- settings for the tests only
     policyControls.test.ts       <- M5 5.1: starting position, six presets, a preset changes interval and compliance only, clamping, rounding, matching preset (7 tests)
     controlPanel.test.ts         <- M5 5.1: panel renders all presets and the starting position, one active preset, "No cleaning" label, hypothetical hint above 50%, trigger slider off when fogging is off, "case" or "cases" (7 tests)
     runClient.test.ts            <- M5 5.2a: request gets a type and a numbered id, progress passed on, error reply rejects, ignores replies of another run, second run refused while busy, same worker reused, cancel rejects and next run uses a fresh worker, a broken worker rejects, a late failure of a cancelled worker is ignored (10 tests)
+    runInput.test.ts             <- M5 5.2b-1: policy controls passed on, compliance replaces the base, no cleaning is interval 0, the base settings are not changed (4 tests)
+    loadParams.test.ts           <- M5 5.2b-1: asks for data/settings.json under the base url, lays the four fitted settings over the starting positions, error with the status when the file cannot be loaded, error when a setting is missing or not a number (4 tests)
     data.test.ts                 <- checks the files in public/data (settings.json must be marked fitted, with a note and values inside the ranges the fit searched)
     rng.test.ts                  <- same seed gives same numbers; values stay in range
     population.test.ts           <- 18,986 people, 3,797 households, everyone starts susceptible
@@ -416,7 +421,7 @@ The build goes in order. Each milestone is reached only when its "reached when" 
 
 ### M5: First usable app
 - **5.1 Controls.** Cleaning interval, compliance, fogging on/off and trigger, number of runs.  *Done:* `src/state/policyControls.ts` (starting position: every 7 days, 50% compliance, fogging on at 1 case, 1 run; maximum 10 runs; six cleaning presets; a preset changes interval and compliance only; interval 0 means no cleaning) and the control panel in `src/ui/controls/ControlPanel.tsx`, shown by `App.tsx`. Compliance above 50% shows a "hypothetical value" hint. The controls do not run anything yet (5.2). 7 + 7 new tests; full npm test: 357 passed, 3 skipped; lint 0 errors; build passes.
-- **5.2 Worker connection.** Send the policy to the worker, show a progress bar, allow cancel. *Split into three steps.* **5.2a (done, 10 tests pass):** `src/worker/runClient.ts` with `tests/runClient.test.ts`, plain TypeScript with no buttons yet. **5.2b:** the real worker factory plus the Run button, progress bar and Cancel button in the page. **5.2c:** a first real run in the browser (progress bar moves, page stays responsive, Cancel works).
+- **5.2 Worker connection.** Send the policy to the worker, show a progress bar, allow cancel. *Split into four steps.* **5.2a (done, 10 tests pass):** `src/worker/runClient.ts` with `tests/runClient.test.ts`, plain TypeScript with no buttons yet. **5.2b-1 (done, 8 tests pass):** `src/state/runInput.ts`, `src/state/loadParams.ts` and `src/worker/workerFactory.ts` (the real worker factory), still no buttons. **5.2b-2:** the Run button, progress bar and Cancel button in the page. **5.2c:** a first real run in the browser (progress bar moves, page stays responsive, Cancel works).
 - **5.3 Infection curve.** Chosen policy vs. no cleaning.
 - **5.4 Headline number.** Percentage reduction in infections, big and clear.
 - **5.5 Mosquito counts.** Adults and immatures per person over time.
