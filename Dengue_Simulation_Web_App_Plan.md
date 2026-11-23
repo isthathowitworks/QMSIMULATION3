@@ -13,7 +13,7 @@ Build a proper, hosted web app (a real project, not a single file) that:
 1. Lets staff set a policy: how often cleaning happens, how many households take part, when fogging starts, and (optionally) a different policy per municipality.
 2. Runs the dengue simulation for 2019-2025 in the browser, in a background worker, so the page never freezes.
 3. Shows what happens over time: infections, mosquito numbers, and households (healthy or infected), on a map of the municipalities.
-4. Shows one headline number: the percentage reduction in infections compared with no cleaning.
+4. Shows one headline number: the percentage reduction in infections compared with doing nothing (no cleaning and no fogging).
 5. Lets staff compare policies, save their own presets, share a policy as a link, and export results.
 6. Always states that results compare strategies and are not predictions.
 
@@ -256,7 +256,7 @@ Fogging presets (different triggers) are added after the cleaning presets work. 
 
 ### Views
 
-1. **Infection curve:** chosen policy vs. no cleaning, with the percentage reduction as the big number. With several runs, the average and the spread.
+1. **Infection curve:** chosen policy vs. do nothing (no cleaning and no fogging), with the percentage reduction as the big number. With several runs, the average and the spread.
 2. **Municipality map:** each of the 12 municipalities colored by infections, with hover details (name, population, infections).
 3. **Household dots:** colored by state (susceptible, exposed, infectious, recovered).
 4. **Mosquito counts:** adults and immatures per person over time.
@@ -430,8 +430,8 @@ The build goes in order. Each milestone is reached only when its "reached when" 
 ### M5: First usable app
 - **5.1 Controls.** Cleaning interval, compliance, fogging on/off and trigger, number of runs.  *Done:* `src/state/policyControls.ts` (starting position: every 7 days, 50% compliance, fogging on at 1 case, 1 run; maximum 10 runs; six cleaning presets; a preset changes interval and compliance only; interval 0 means no cleaning) and the control panel in `src/ui/controls/ControlPanel.tsx`, shown by `App.tsx`. Compliance above 50% shows a "hypothetical value" hint. The controls do not run anything yet (5.2). 7 + 7 new tests; full npm test: 357 passed, 3 skipped; lint 0 errors; build passes.
 - **5.2 Worker connection.** Send the policy to the worker, show a progress bar, allow cancel. *Split into four steps.* **5.2a (done, 10 tests pass):** `src/worker/runClient.ts` with `tests/runClient.test.ts`, plain TypeScript with no buttons yet. **5.2b-1 (done, 8 tests pass):** `src/state/runInput.ts`, `src/state/loadParams.ts` and `src/worker/workerFactory.ts` (the real worker factory), still no buttons. **5.2b-2 (done, 18 tests pass):** the Run button, progress bar and Cancel button in the page: `src/ui/run/RunPanel.tsx` and `RunPanel.css` (show the state they are given), `src/state/runController.ts` (holds the run state: idle, running, done, cancelled, error; loads the settings once; ignores a late result after Cancel), `src/state/useRunController.ts` (React hook that starts the real worker only when a run starts) and the new `src/App.tsx`. **5.2c (done):** first real run in the browser: Run ends with "Run finished.", Cancel ends with "Run cancelled." and the Run button works again. The result is not shown yet (5.3 to 5.5).
-- **5.3 Infection curve.** Chosen policy vs. no cleaning.
-- **5.4 Headline number.** Percentage reduction in infections, big and clear.
+- **5.3 Infection curve.** Chosen policy vs. the baseline "do nothing" (no cleaning and no fogging). *Decided:* the baseline is one extra run with the same seed and settings, run once and reused while the controls change. The "No cleaning" preset with fogging on shows what fogging does alone. A later option is to split the headline into "cleaning only" and "fogging only".
+- **5.4 Headline number.** Percentage reduction in infections, big and clear. The comparison is with "do nothing" (no cleaning and no fogging), so every control changes the number.
 - **5.5 Mosquito counts.** Adults and immatures per person over time.
 - **5.6 Results note.** "Compares strategies, does not forecast" always visible.
 - *Reached when:* a user can change a control, run it, and read the % reduction, with the page staying responsive during the run.
