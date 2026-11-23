@@ -48,7 +48,7 @@ Options that were considered and rejected: a Python engine behind a server (need
 | Data structures | Typed arrays inside the engine | Fast for tens of thousands of simulated people |
 | Random numbers | Small seeded generator written for the project | Same seed gives the same result, required by the checks |
 | Map | D3-geo drawing the GeoJSON as SVG | No online map tiles needed |
-| Charts | A charting library (for example Recharts or uPlot) | Infection curve, mosquito counts |
+| Charts | Plain SVG drawn by the project's own components | No chart library; infection curve and mosquito counts (done in M5) |
 | Tests | Vitest | Runs the section 7 checks automatically |
 | Fitting | Node script that imports the same engine | One model for the app, the tests and the fitting |
 | Hosting | Static host (GitHub Pages, Netlify or Vercel) with automatic deploy from the repository | Free, nothing to keep running |
@@ -456,7 +456,7 @@ The build goes in order. Each milestone is reached only when its "reached when" 
 - *Reached when:* a user can change a control, run it, and read the % reduction, with the page staying responsive during the run. *Reached (M5 done).*
 
 ### M6: Map and households
-- **6.1 Municipality map.** 12 municipalities colored by infections.
+- **6.1 Municipality map.** The 12 municipalities colored by infections after a run. *Planned, split into three steps.* **6.1a:** the engine records people infected by mosquito bites per municipality (new array `biteInfections` in `RunResult`, flat like `onsets`, row = day, column = municipality; counted right after `infectPeople`, before imports, so it matches the headline number; no random numbers, so results for the same seed stay the same; `runJob.ts` hands over 14 arrays instead of 13). Reading `run.ts` showed that `onsets` is not enough: it includes imported infections, and imports are only recorded as a total per day. Then plain TypeScript in `src/state/` with a test file and no drawing: one number per municipality for each run, as a total and per 1,000 simulated people (the names and people per municipality come from `population.json`, in the same first-appearance order as `World.municipalities`). **6.1b:** a map component in `src/ui/map/` that draws the 12 shapes from `camarines_norte_map.json` as plain SVG with D3-geo (no map tiles), colored on one scale with a legend, with its tests; the map file is already in public/data (written by prepare-data.ts), so the page loads it the same way as settings.json. **6.1c:** put the map in `ResultsPanel.tsx` and check it in the browser: 12 shapes, colors change after a different policy is run, the do-nothing map stays the same. Decided: the map shows bite infections per 1,000 simulated people, because a plain count makes large towns look worse only because they are bigger; whether to show the do-nothing and policy maps side by side or one map with a switch is decided in 6.1b.
 - **6.2 Household dots.** Colored susceptible, exposed, infectious, recovered.
 - **6.3 Hover details.** Municipality name, population, infections.
 - **6.4 Mobile layout.** Check that the map and dots work on a phone and a tablet.
