@@ -21,8 +21,62 @@
   stroke-linejoin: round;
 }
 
+.map-shape[role='button'] {
+  cursor: pointer;
+}
+
+.map-shape[role='button']:focus {
+  outline: none;
+}
+
+.map-shape-active,
+.map-shape[role='button']:focus-visible {
+  stroke: #222222;
+  stroke-width: 1.8;
+}
+
 .map-shape-missing {
   fill: #cccccc;
+}
+
+.map-details {
+  box-sizing: border-box;
+  min-height: 6.5em;
+  margin: 8px auto 0;
+  max-width: 320px;
+  padding: 6px 10px;
+  border: 1px solid #cccccc;
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
+
+.map-details-hint {
+  margin: 0;
+  color: #666666;
+}
+
+.map-details-name {
+  margin: 0 0 4px;
+  font-size: 0.95rem;
+}
+
+.map-details-list {
+  margin: 0;
+}
+
+.map-details-list div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.map-details-list dt,
+.map-details-list dd {
+  margin: 0;
+}
+
+.map-details-list dd {
+  font-weight: 600;
 }
 
 .map-legend {
