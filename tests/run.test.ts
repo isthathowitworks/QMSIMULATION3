@@ -81,7 +81,7 @@ describe('runSimulation', () => {
     const r = go()
     expect(r.days).toBe(DAYS)
     expect(r.municipalityCount).toBe(M)
-    for (const a of [r.adults, r.infectiousAdults, r.cleanings, r.newInfections, r.imported,
+    for (const a of [r.adults, r.immatures, r.infectiousAdults, r.cleanings, r.newInfections, r.imported,
       r.susceptible, r.exposed, r.infectious, r.recovered]) {
       expect(a.length).toBe(DAYS)
     }
@@ -101,6 +101,7 @@ describe('runSimulation', () => {
     const a = go(LOTS_OF_IMPORTS, 5)
     const b = go(LOTS_OF_IMPORTS, 5)
     expect(Array.from(b.adults)).toEqual(Array.from(a.adults))
+    expect(Array.from(b.immatures)).toEqual(Array.from(a.immatures))
     expect(Array.from(b.newInfections)).toEqual(Array.from(a.newInfections))
     expect(Array.from(b.onsets)).toEqual(Array.from(a.onsets))
     expect(Array.from(b.fogged)).toEqual(Array.from(a.fogged))
@@ -139,13 +140,22 @@ describe('runSimulation', () => {
 
   it('records only whole, non-negative numbers', () => {
     const r = go(LOTS_OF_IMPORTS)
-    for (const a of [r.adults, r.infectiousAdults, r.cleanings, r.newInfections, r.imported,
+    for (const a of [r.adults, r.immatures, r.infectiousAdults, r.cleanings, r.newInfections, r.imported,
       r.onsets, r.foggingRounds]) {
       for (const v of a) {
         expect(Number.isInteger(v)).toBe(true)
         expect(v).toBeGreaterThanOrEqual(0)
       }
     }
+  })
+
+  it('records the immature mosquitoes: some exist, and the count is there for every day', () => {
+    const r = go(NO_DISEASE)
+    expect(r.immatures.length).toBe(DAYS)
+    let total = 0
+    for (const v of r.immatures) total += v
+    expect(total).toBeGreaterThan(0)
+    expect(r.immatures[DAYS - 1]).toBeGreaterThan(0)
   })
 
   it('with fogging coverage 0, no fogging ever happens', () => {

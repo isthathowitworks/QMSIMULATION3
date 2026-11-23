@@ -29,6 +29,7 @@ export interface RunResult {
   days: number
   municipalityCount: number
   adults: Int32Array // all adult mosquitoes in the study area (susceptible, exposed, infectious)
+  immatures: Int32Array // all immature mosquitoes in the study area (every age, 0 to 24 days)
   infectiousAdults: Int32Array // infectious adult mosquitoes
   cleanings: Int32Array // households that cleaned
   newInfections: Int32Array // simulated people newly infected (mosquito bites plus imports)
@@ -97,6 +98,7 @@ export function runSimulation(
     days,
     municipalityCount: M,
     adults: new Int32Array(days),
+    immatures: new Int32Array(days),
     infectiousAdults: new Int32Array(days),
     cleanings: new Int32Array(days),
     newInfections: new Int32Array(days),
@@ -155,6 +157,11 @@ export function runSimulation(
     }
     result.adults[day] = adults
     result.infectiousAdults[day] = infectiousAdults
+
+    // immatures: one pass over every household's age columns
+    let immatures = 0
+    for (let i = 0; i < m.imm.length; i++) immatures += m.imm[i]
+    result.immatures[day] = immatures
 
     // people in each state: one add per person
     stateCount.fill(0)

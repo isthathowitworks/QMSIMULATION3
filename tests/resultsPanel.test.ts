@@ -10,6 +10,10 @@ const comparison: Comparison = {
   baselineTotal: 14,
   policyTotal: 6,
   percentReduction: (8 / 14) * 100,
+  baselineAdultsPerPerson: [6, 8, 7],
+  policyAdultsPerPerson: [5, 4, 3],
+  baselineImmaturesPerPerson: [20, 30, 25],
+  policyImmaturesPerPerson: [15, 10, 8],
 }
 
 function render(value: Comparison | null): string {

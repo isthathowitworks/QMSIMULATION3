@@ -116,16 +116,18 @@ describe('runJob', () => {
     expect(done.seconds).toBeGreaterThanOrEqual(0)
     expect(done.result.days).toBe(DAYS)
     expect(done.result.adults.length).toBe(DAYS)
+    expect(done.result.immatures.length).toBe(DAYS)
     expect(done.result.onsets.length).toBe(DAYS * M)
   })
 
-  it('hands over the 12 memory blocks of the result with the done message', () => {
+  it('hands over the 13 memory blocks of the result with the done message', () => {
     const { replies, transfers } = run(request())
     const done = doneOf(replies)
     expect(transfers.length).toBe(1)
-    expect(transfers[0].length).toBe(12)
+    expect(transfers[0].length).toBe(13)
     for (const b of transfers[0]) expect(b).toBeInstanceOf(ArrayBuffer)
     expect(transfers[0]).toContain(done.result.adults.buffer)
+    expect(transfers[0]).toContain(done.result.immatures.buffer)
     expect(transfers[0]).toContain(done.result.onsets.buffer)
   })
 

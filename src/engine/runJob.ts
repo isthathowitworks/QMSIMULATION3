@@ -69,7 +69,7 @@ export function checkRequest(req: RunRequest): string | null {
 // makes sending a result back from the worker instant.
 export function transferables(r: RunResult): ArrayBuffer[] {
   const arrays = [
-    r.adults, r.infectiousAdults, r.cleanings, r.newInfections, r.imported,
+    r.adults, r.immatures, r.infectiousAdults, r.cleanings, r.newInfections, r.imported,
     r.susceptible, r.exposed, r.infectious, r.recovered,
     r.onsets, r.fogged, r.foggingRounds,
   ]

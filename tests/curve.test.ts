@@ -3,23 +3,33 @@ import type { RunResult } from '../src/engine/run'
 import {
   compareRuns,
   mosquitoInfections,
+  peopleIn,
   percentReduction,
+  perPersonWeekly,
   totalOf,
+  weeklyAverages,
   weeklyTotals,
 } from '../src/state/curve'
 
+interface Extra {
+  adults?: number[] // mosquitoes, one number per day
+  immatures?: number[]
+  people?: number // simulated people, all susceptible
+}
+
 // a result with only the fields the comparison reads filled in
-function makeResult(newInfections: number[], imported?: number[]): RunResult {
+function makeResult(newInfections: number[], imported?: number[], extra: Extra = {}): RunResult {
   const days = newInfections.length
   return {
     days,
     municipalityCount: 1,
-    adults: new Int32Array(days),
+    adults: extra.adults ? Int32Array.from(extra.adults) : new Int32Array(days),
+    immatures: extra.immatures ? Int32Array.from(extra.immatures) : new Int32Array(days),
     infectiousAdults: new Int32Array(days),
     cleanings: new Int32Array(days),
     newInfections: Int32Array.from(newInfections),
     imported: Int32Array.from(imported ?? new Array<number>(days).fill(0)),
-    susceptible: new Int32Array(days),
+    susceptible: new Int32Array(days).fill(extra.people ?? 0),
     exposed: new Int32Array(days),
     infectious: new Int32Array(days),
     recovered: new Int32Array(days),
@@ -54,6 +64,49 @@ describe('weeklyTotals', () => {
   })
 })
 
+describe('weeklyAverages', () => {
+  it('averages each block of 7 days', () => {
+    const daily = [...new Array<number>(7).fill(2), ...new Array<number>(7).fill(4)]
+    expect(weeklyAverages(daily)).toEqual([2, 4])
+  })
+
+  it('averages a short last block over the days it has', () => {
+    const daily = [...new Array<number>(7).fill(2), 6, 6, 6]
+    expect(weeklyAverages(daily)).toEqual([2, 6])
+  })
+
+  it('gives nothing for no days', () => {
+    expect(weeklyAverages([])).toEqual([])
+  })
+})
+
+describe('peopleIn', () => {
+  it('adds up the four states on day 0', () => {
+    const r = makeResult([0, 0])
+    r.susceptible[0] = 10
+    r.exposed[0] = 2
+    r.infectious[0] = 1
+    r.recovered[0] = 3
+    expect(peopleIn(r)).toBe(16)
+  })
+
+  it('is 0 for a run with no days', () => {
+    expect(peopleIn(makeResult([]))).toBe(0)
+  })
+})
+
+describe('perPersonWeekly', () => {
+  it('averages each week and divides by the number of people', () => {
+    const daily = new Array<number>(14).fill(40)
+    expect(perPersonWeekly(daily, 10)).toEqual([4, 4])
+  })
+
+  it('gives 0 for every week when there are no people', () => {
+    const daily = new Array<number>(14).fill(40)
+    expect(perPersonWeekly(daily, 0)).toEqual([0, 0])
+  })
+})
+
 describe('percentReduction', () => {
   it('is the share by which the policy is below the baseline', () => {
     expect(percentReduction(100, 75)).toBe(25)
@@ -80,6 +133,25 @@ describe('compareRuns', () => {
     expect(c.baselineTotal).toBe(140)
     expect(c.policyTotal).toBe(70)
     expect(c.percentReduction).toBe(50)
+  })
+
+  it('gives weekly adults and immatures per person for both runs', () => {
+    const zeros = new Array<number>(14).fill(0)
+    const baseline = makeResult(zeros, zeros, {
+      adults: new Array<number>(14).fill(80),
+      immatures: new Array<number>(14).fill(200),
+      people: 10,
+    })
+    const policy = makeResult(zeros, zeros, {
+      adults: new Array<number>(14).fill(30),
+      immatures: new Array<number>(14).fill(50),
+      people: 10,
+    })
+    const c = compareRuns(baseline, policy)
+    expect(c.baselineAdultsPerPerson).toEqual([8, 8])
+    expect(c.policyAdultsPerPerson).toEqual([3, 3])
+    expect(c.baselineImmaturesPerPerson).toEqual([20, 20])
+    expect(c.policyImmaturesPerPerson).toEqual([5, 5])
   })
 
   it('refuses two runs with a different number of days', () => {
