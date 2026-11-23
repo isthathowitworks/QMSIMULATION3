@@ -1,0 +1,11 @@
+.results-note {
+  font-size: 14px;
+  margin: 0 0 16px;
+  color: var(--text);
+}
+
+.results-note-after-run {
+  margin-top: 24px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}

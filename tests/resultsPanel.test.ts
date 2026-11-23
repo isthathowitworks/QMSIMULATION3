@@ -69,4 +69,15 @@ describe('ResultsPanel', () => {
     expect(markup).toContain('>Adult mosquitoes per person</text>')
     expect(markup).toContain('>Immature mosquitoes per person</text>')
   })
+
+  it('shows the note about reading the reduction with care, under the charts', () => {
+    const markup = render(comparison)
+    const note = markup.indexOf('results-note-after-run')
+    expect(note).toBeGreaterThan(markup.indexOf('aria-label="Immature mosquitoes"'))
+    expect(markup).toContain('read the size of the reduction with care')
+  })
+
+  it('does not show the always-visible note (that one is on the page itself)', () => {
+    expect(render(comparison)).not.toContain('results-note-always')
+  })
 })

@@ -1,11 +1,13 @@
 // What the page shows after a run: the headline number (how much lower the infections
-// are than with "do nothing"), the infection curve, and the adult and immature mosquitoes
-// per person. It shows nothing until there is a comparison.
+// are than with "do nothing"), the infection curve, the adult and immature mosquitoes
+// per person, and the note about how to read the size of the reduction.
+// It shows nothing until there is a comparison.
 
 import type { Comparison } from '../../state/curve'
 import HeadlineNumber from './HeadlineNumber'
 import InfectionChart from './InfectionChart'
 import MosquitoChart from './MosquitoChart'
+import ResultsNote from './ResultsNote'
 
 interface Props {
   comparison: Comparison | null
@@ -28,6 +30,7 @@ export default function ResultsPanel({ comparison }: Props) {
         baselineWeekly={comparison.baselineImmaturesPerPerson}
         policyWeekly={comparison.policyImmaturesPerPerson}
       />
+      <ResultsNote kind="afterRun" />
     </section>
   )
 }
