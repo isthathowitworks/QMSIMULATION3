@@ -4,6 +4,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 import type { MapData } from '../src/state/loadMap'
 import type { MapColumns } from '../src/state/mapData'
+import type { MunicipalityDetails } from '../src/state/municipalities'
 import MapPair from '../src/ui/map/MapPair'
 
 const real = JSON.parse(readFileSync('public/data/camarines_norte_map.json', 'utf8')) as MapData
@@ -13,8 +14,19 @@ function columns(baseline: number[], policy: number[]): MapColumns {
   return { names, baseline, policy }
 }
 
-function render(c: MapColumns): string {
-  return renderToStaticMarkup(createElement(MapPair, { map: real, columns: c }))
+function render(
+  c: MapColumns,
+  baselineDetails?: MunicipalityDetails[],
+  policyDetails?: MunicipalityDetails[],
+): string {
+  return renderToStaticMarkup(
+    createElement(MapPair, {
+      map: real,
+      columns: c,
+      ...(baselineDetails ? { baselineDetails } : {}),
+      ...(policyDetails ? { policyDetails } : {}),
+    }),
+  )
 }
 
 function count(markup: string, piece: string): number {
@@ -74,5 +86,41 @@ describe('MapPair', () => {
     const markup = render(columns(first(0), first(0)))
     expect(markup).not.toContain('NaN')
     expect(count(markup, 'fill="#fff5eb"')).toBe(24)
+  })
+})
+
+describe('MapPair details (6.3c)', () => {
+  // the do-nothing run has twice the infections per 1,000 people of the policy run
+  const baselineDetails: MunicipalityDetails[] = names.map((name, i) => ({
+    name,
+    people: 1000,
+    infections: i * 2,
+    perThousand: i * 2,
+  }))
+  const policyDetails: MunicipalityDetails[] = names.map((name, i) => ({
+    name,
+    people: 1000,
+    infections: i,
+    perThousand: i,
+  }))
+
+  it('has no focusable shapes and no details boxes without details', () => {
+    const markup = render(columns(first(10), first(5)))
+    expect(count(markup, 'tabindex')).toBe(0)
+    expect(count(markup, 'map-details')).toBe(0)
+  })
+
+  it('makes the shapes of both maps focusable and shows a details box under each map', () => {
+    const markup = render(columns(first(10), first(5)), baselineDetails, policyDetails)
+    expect(count(markup, 'tabindex="0"')).toBe(24)
+    expect(count(markup, 'Hover over, focus or tap a municipality to see its details.')).toBe(2)
+  })
+
+  it('gives each map the details of its own run', () => {
+    const markup = render(columns(first(10), first(5)), baselineDetails, policyDetails)
+    // the third municipality: 4 per 1,000 in the do-nothing run, 2 per 1,000 with the policy
+    expect(count(markup, `aria-label="${names[2]}: 4 bite infections per 1,000 people"`)).toBe(1)
+    expect(count(markup, `aria-label="${names[2]}: 2 bite infections per 1,000 people"`)).toBe(1)
+    expect(markup.indexOf(`${names[2]}: 4 bite`)).toBeLessThan(markup.indexOf(`${names[2]}: 2 bite`))
   })
 })

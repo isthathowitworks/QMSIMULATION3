@@ -1,7 +1,8 @@
 // What the page shows after a run: the headline number (how much lower the infections
-// are than with "do nothing"), the infection curve, the two maps of bite infections per municipality,
-// the household dots with the week slider, the adult and immature mosquitoes per person,
-// and the note about how to read the size of the reduction.
+// are than with "do nothing"), the infection curve, the two maps of bite infections per municipality
+// (with a details box for the municipality that is hovered, focused or tapped), the household dots
+// with the week slider (their outlines show the households of a municipality in the same way),
+// the adult and immature mosquitoes per person, and the note about how to read the size of the reduction.
 // It shows nothing until there is a comparison. If the map files are still loading or could not be
 // loaded, only the map spot shows a short note: the headline number and the charts are not affected.
 // The household dots need the same files, so they show nothing while the files load or if they fail.
@@ -10,9 +11,11 @@ import { useEffect, useMemo, useState } from 'react'
 import type { Comparison } from '../../state/curve'
 import { mapColumns } from '../../state/mapData'
 import type { MapFiles } from '../../state/mapData'
+import { municipalityDetails } from '../../state/municipalities'
 import type { MapDataState } from '../../state/useMapData'
 import { dotPositions } from '../map/dotPositions'
 import HouseholdDots from '../map/HouseholdDots'
+import { householdMunicipalities } from '../map/householdPositions'
 import MapPair from '../map/MapPair'
 import WeekSlider from '../map/WeekSlider'
 import { clampWeek, pressPlayPause, tick } from '../map/weekPlayback'
@@ -43,11 +46,21 @@ function MapArea({ comparison, mapState }: { comparison: Comparison; mapState: M
       </p>
     )
   }
-  const columns = mapColumns(comparison, mapState.files.population)
+  const { map, population } = mapState.files
+  const columns = mapColumns(comparison, population)
   if (columns === null) {
     return <p className="chart-note">The map does not match the number of municipalities in this run, so it is not shown.</p>
   }
-  return <MapPair map={mapState.files.map} columns={columns} />
+  // mapColumns has checked that the run and the population file have the same number of municipalities,
+  // so municipalityDetails cannot throw here
+  return (
+    <MapPair
+      map={map}
+      columns={columns}
+      baselineDetails={municipalityDetails(population, comparison.baselineBitesByMunicipality)}
+      policyDetails={municipalityDetails(population, comparison.policyBitesByMunicipality)}
+    />
+  )
 }
 
 function HouseholdView({ comparison, files }: { comparison: Comparison; files: MapFiles }) {
@@ -59,6 +72,10 @@ function HouseholdView({ comparison, files }: { comparison: Comparison; files: M
     () => dotPositions(files, householdCount, DOTS_WIDTH, DOTS_HEIGHT),
     [files, householdCount],
   )
+
+  // which municipality each household is in, and the municipality names, for the details of the outlines;
+  // HouseholdDots checks that the list fits the households and shows no details if it does not
+  const municipalities = useMemo(() => householdMunicipalities(files.population.barangays), [files])
 
   // one row of household states per week
   const weeks = householdCount > 0 ? Math.floor(baselineHouseholdStates.length / householdCount) : 0
@@ -88,6 +105,8 @@ function HouseholdView({ comparison, files }: { comparison: Comparison; files: M
         snapshot={week}
         width={DOTS_WIDTH}
         height={DOTS_HEIGHT}
+        municipalityOf={municipalities.of}
+        names={municipalities.names}
       />
       <WeekSlider
         week={week}

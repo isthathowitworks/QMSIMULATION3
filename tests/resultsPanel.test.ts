@@ -191,6 +191,32 @@ describe('ResultsPanel maps', () => {
   })
 })
 
+describe('ResultsPanel map details (6.3c)', () => {
+  it('shows a details box under each of the two maps, with the hint at the start', () => {
+    const markup = render(comparison)
+    expect(count(markup, 'Hover over, focus or tap a municipality to see its details.')).toBe(2)
+  })
+
+  it('gives each map the numbers of its own run, per 1,000 simulated people', () => {
+    // X has 100 simulated people: 6 bites in the do-nothing run is 60 per 1,000, 3 with the policy is 30
+    const markup = render(comparison)
+    expect(count(markup, 'aria-label="X: 60 bite infections per 1,000 people"')).toBe(1)
+    expect(count(markup, 'aria-label="X: 30 bite infections per 1,000 people"')).toBe(1)
+    expect(markup.indexOf('X: 60 bite')).toBeLessThan(markup.indexOf('X: 30 bite'))
+  })
+
+  it('has no details box while the map loads, if it failed, or if the run does not fit', () => {
+    const twoOnly: MapDataState = {
+      status: 'ready',
+      files: { map: fakeMap, population: fakePopulation(['X', 'Y']) },
+    }
+    const states: MapDataState[] = [{ status: 'loading' }, { status: 'failed', message: 'status 404' }, twoOnly]
+    for (const state of states) {
+      expect(render(comparison, state)).not.toContain('map-details')
+    }
+  })
+})
+
 describe('ResultsPanel household dots', () => {
   it('shows the household dots and the week slider after the maps and before the mosquito charts', () => {
     const markup = render(comparison)
@@ -231,5 +257,40 @@ describe('ResultsPanel household dots', () => {
     // the maps and the charts are not affected
     expect(markup).toContain('aria-label="Maps of the municipalities"')
     expect(markup.match(/<polyline/g)).toHaveLength(6)
+  })
+})
+
+describe('ResultsPanel household details (6.3e-3)', () => {
+  it('shows a details box under each of the two household dot cards, with the hint at the start', () => {
+    const markup = render(comparison)
+    expect(count(markup, 'Hover over, focus or tap a municipality to see its households.')).toBe(2)
+  })
+
+  it('labels each municipality outline of both household cards with its households', () => {
+    // 4 households in each of X, Y and Z, and both cards label them
+    const markup = render(comparison)
+    for (const name of ['X', 'Y', 'Z']) {
+      expect(count(markup, `aria-label="${name}: 4 households"`)).toBe(2)
+    }
+  })
+
+  it('shows the household details after the colored maps and before the week slider', () => {
+    const markup = render(comparison)
+    const maps = markup.indexOf('aria-label="Maps of the municipalities"')
+    const hint = markup.indexOf('to see its households.')
+    const slider = markup.indexOf('aria-label="Week control"')
+    expect(hint).toBeGreaterThan(maps)
+    expect(hint).toBeLessThan(slider)
+  })
+
+  it('has no household details when the dots are not shown', () => {
+    const wrongHouseholds: MapDataState = {
+      status: 'ready',
+      files: { map: fakeMap, population: fakePopulation(['X', 'Y', 'Z'], 5) },
+    }
+    const states: MapDataState[] = [{ status: 'loading' }, { status: 'failed', message: 'status 404' }, wrongHouseholds]
+    for (const state of states) {
+      expect(render(comparison, state)).not.toContain('to see its households.')
+    }
   })
 })

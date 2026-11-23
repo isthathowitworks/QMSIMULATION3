@@ -131,3 +131,56 @@ describe('HouseholdDots', () => {
     expect(markup).not.toContain('undefined')
   })
 })
+
+describe('HouseholdDots details (6.3e-2)', () => {
+  const names = real.features.map((f) => f.properties.adm3_en)
+  // 2 households in the first municipality, 3 in the second, 1 in the third
+  const municipalityOf = Uint8Array.from([0, 0, 1, 1, 1, 2])
+
+  it('has no focusable outlines and no details box without municipalityOf and names', () => {
+    const markup = render()
+    expect(count(markup, 'tabindex')).toBe(0)
+    expect(count(markup, 'map-details')).toBe(0)
+    expect(count(markup, 'role="img"')).toBe(2)
+  })
+
+  it('makes all 12 outlines of both cards focusable buttons when the details fit', () => {
+    const markup = render({ municipalityOf, names })
+    expect(count(markup, 'tabindex="0"')).toBe(24)
+    expect(count(markup, 'role="button"')).toBe(24)
+    expect(count(markup, 'aria-pressed="false"')).toBe(24)
+  })
+
+  it('shows the hint under both cards, chooses no outline at the start and changes the picture role to group', () => {
+    const markup = render({ municipalityOf, names })
+    expect(count(markup, 'Hover over, focus or tap a municipality to see its households.')).toBe(2)
+    expect(markup).not.toContain('dots-shape-active')
+    expect(count(markup, 'role="group"')).toBe(2)
+    expect(markup).not.toContain('role="img"')
+  })
+
+  it('labels an outline with its name and its number of households', () => {
+    const markup = render({ municipalityOf, names })
+    // the second municipality has 3 households, and both cards label it
+    expect(count(markup, `aria-label="${names[1]}: 3 households"`)).toBe(2)
+  })
+
+  it('draws the dots and the legend as before when the details are on', () => {
+    const markup = render({ municipalityOf, names })
+    expect(count(markup, 'h0')).toBe(12)
+    expect(count(markup, '>Infectious: 2<')).toBe(1)
+    expect(count(markup, 'not real house locations')).toBe(1)
+  })
+
+  it('has no details when the household list does not fit the households, and still draws the dots', () => {
+    const markup = render({ municipalityOf: Uint8Array.from([0, 0, 1, 1, 1]), names })
+    expect(count(markup, 'tabindex')).toBe(0)
+    expect(count(markup, 'map-details')).toBe(0)
+    expect(count(markup, 'h0')).toBe(12)
+  })
+
+  it('has no details when only one of the two lists is given', () => {
+    expect(count(render({ municipalityOf }), 'tabindex')).toBe(0)
+    expect(count(render({ names }), 'tabindex')).toBe(0)
+  })
+})

@@ -5,10 +5,26 @@
   stroke-linejoin: round;
 }
 
+.dots-shape[role='button'] {
+  cursor: pointer;
+}
+
+.dots-shape[role='button']:focus {
+  outline: none;
+}
+
+.dots-shape-active,
+.dots-shape[role='button']:focus-visible {
+  stroke: #222222;
+  stroke-width: 1.8;
+}
+
+/* the dots never take the mouse, so the outline under a dot can still be hovered */
 .dots-dot {
   fill: none;
   stroke-width: 3;
   stroke-linecap: round;
+  pointer-events: none;
 }
 
 .dots-dot-susceptible {
@@ -25,6 +41,11 @@
 
 .dots-dot-infectious {
   stroke: #d62728;
+}
+
+/* five rows instead of three, so the page does not jump when a municipality is chosen */
+.map-details.map-details-households {
+  min-height: 9.5em;
 }
 
 .dots-legend-title {
